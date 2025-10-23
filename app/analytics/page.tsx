@@ -87,22 +87,6 @@ export default function AnalyticsPage() {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/');
-        return;
-      }
-      setUser(user);
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div style={styles.main}>

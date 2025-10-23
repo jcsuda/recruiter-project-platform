@@ -132,22 +132,6 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/');
-        return;
-      }
-      setUser(user);
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadDashboardData = async () => {
     try {
       // Load requisitions

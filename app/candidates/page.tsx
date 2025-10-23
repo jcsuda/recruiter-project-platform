@@ -96,22 +96,6 @@ export default function CandidatesPage() {
     }
   }, [user]);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/');
-        return;
-      }
-      setUser(user);
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadCandidatesData = async () => {
     try {
       // Load candidates
