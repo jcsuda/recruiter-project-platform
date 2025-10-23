@@ -206,7 +206,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <div style={styles.successMessage}>
               <h3 style={styles.successTitle}>✓ Email Sent!</h3>
               <p style={styles.successText}>
-                We've sent a magic link to <strong>{email || 'your email'}</strong>.
+                We&apos;ve sent a magic link to <strong>{email || 'your email'}</strong>.
                 <br />
                 Click the link in the email to sign in or complete your registration.
               </p>
@@ -267,7 +267,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 }}
               />
               <p style={styles.helpText}>
-                We'll send you a magic link - no password needed!
+                We&apos;ll send you a magic link - no password needed!
               </p>
             </div>
 

@@ -226,7 +226,7 @@ export default function SignInPage() {
             onMouseOver={(e) => (e.currentTarget.style.color = '#1d4ed8')}
             onMouseOut={(e) => (e.currentTarget.style.color = '#2563eb')}
           >
-            Don't have an account? Sign up here
+            Don&apos;t have an account? Sign up here
           </button>
         </div>
       </div>
