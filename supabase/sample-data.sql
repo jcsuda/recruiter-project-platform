@@ -77,3 +77,4 @@ BEGIN
     (user_uuid, 'James Lewis', 'james.lewis@email.com', '555-0118', 'Software Engineer', phone_stage_id, 'withdrawn', 'GitHub', 'Decided not to proceed', now(), now());
 
 END $$;
+

@@ -2,7 +2,7 @@
 
 ## What Changed
 
-Your app has been restructured into a professional recruiting platform with a clear separation between the landing page and the main application.
+Your app has been restructured into a professional HireLab platform with a clear separation between the landing page and the main application.
 
 ---
 
@@ -26,7 +26,7 @@ Your app has been restructured into a professional recruiting platform with a cl
    - Columns: Position, Hiring Manager, Department, Location, Priority, Status, **Created Date**, **Target Start**, **Hire Date**
    - "+ Add Requisition" button
 
-3. **🔍 Boolean Search Builder** (Find candidates for your requisitions)
+3. **🔍 Boolean Search** (Find candidates for your requisitions)
    - Platform tabs (LinkedIn, GitHub, Stack Overflow, etc.)
    - Search form with role, include, exclude, location
    - "Open in Google/Bing" buttons
@@ -126,7 +126,7 @@ The new layout follows your natural workflow:
 
 ## 🎯 Success!
 
-Your recruiting platform now has:
+Your HireLab platform now has:
 - ✅ Beautiful landing page
 - ✅ Unified dashboard with all features
 - ✅ Boolean search builder

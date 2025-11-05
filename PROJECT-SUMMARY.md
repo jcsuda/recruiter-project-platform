@@ -1,8 +1,8 @@
-# Recruiting Platform - Project Summary
+# HireLab - Project Summary
 
 ## 🎯 Project Overview
 
-A comprehensive recruiting platform built with modern web technologies to streamline talent acquisition, candidate management, and Boolean search query generation across multiple professional networks.
+A comprehensive talent acquisition platform built with modern web technologies to streamline talent acquisition, candidate management, and Boolean search query generation across multiple professional networks.
 
 ## ✅ Completed Features
 
@@ -146,7 +146,7 @@ A comprehensive recruiting platform built with modern web technologies to stream
 - **Edit functionality** for candidate updates
 
 ### 🔍 **Search Builder Page (`/search`)**
-- **Multi-platform Boolean Search Builder**
+- **Multi-platform Boolean Search**
   - **LinkedIn**: Full feature set including #OpenToWork, education, employer fields
   - **GitHub**: Developer-focused search capabilities
   - **Stack Overflow**: Simplified interface (Search Query only)

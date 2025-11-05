@@ -1,4 +1,4 @@
--- Boolean Search Builder Database Schema
+-- HireLab Database Schema
 -- This schema supports saved searches, source management, and synonym expansion
 
 -- Enable UUID extension

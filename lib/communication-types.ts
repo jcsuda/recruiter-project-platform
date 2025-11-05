@@ -89,3 +89,4 @@ export interface EmailTemplateFormData {
   body: string;
   template_type: EmailTemplate['template_type'];
 }
+

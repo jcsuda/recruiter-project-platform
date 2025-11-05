@@ -2,7 +2,7 @@
 
 ## What's New
 
-Added a **LinkedIn Status** field to the Boolean Search Builder that allows you to filter LinkedIn profiles by their status hashtags.
+Added a **LinkedIn Status** field to HireLab that allows you to filter LinkedIn profiles by their status hashtags.
 
 ---
 
@@ -97,4 +97,5 @@ The field **only appears when LinkedIn is selected** - it won't clutter the inte
 ---
 
 Ready to test! Switch to the LinkedIn tab and you'll see the new **LinkedIn Status** dropdown field. 🚀
+
 

@@ -174,3 +174,4 @@ export interface UserPermissions {
   canApproveOffers: boolean;
   canAssignCandidates: boolean;
 }
+

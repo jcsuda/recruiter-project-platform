@@ -169,3 +169,4 @@ export interface IntegrationStatus {
   sync_frequency: string;
   error_message?: string;
 }
+

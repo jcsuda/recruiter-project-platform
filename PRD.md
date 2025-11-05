@@ -1,8 +1,8 @@
-# Recruiting Platform - Product Requirements Document (PRD)
+# HireLab - Product Requirements Document (PRD)
 
 ## 📋 Document Information
 
-- **Product Name**: Recruiting Platform
+- **Product Name**: HireLab
 - **Version**: 1.0.0
 - **Last Updated**: December 2024
 - **Status**: Production Ready
@@ -10,7 +10,7 @@
 
 ## 🎯 Executive Summary
 
-The Recruiting Platform is a comprehensive talent acquisition solution designed to streamline the entire recruiting process. It combines Boolean search query generation, candidate pipeline management, requisition tracking, and recruiting analytics into a single, user-friendly platform.
+HireLab is a comprehensive talent acquisition solution designed to streamline the entire recruiting process. It combines Boolean search query generation, candidate pipeline management, requisition tracking, and recruiting analytics into a single, user-friendly platform.
 
 ## 🎯 Product Vision
 
@@ -231,7 +231,7 @@ Empower recruiters and talent sourcers with a complete platform that automates B
 - **Notes**: Meeting notes and observations
 - **Status Updates**: Move candidates between pipeline stages
 
-### 5. Boolean Search Builder
+### 5. Boolean Search
 
 #### 5.1 Search Builder Page (`/search`)
 - **Purpose**: Generate precise Boolean search queries for multiple platforms

@@ -1,5 +1,5 @@
 /**
- * Core types for Boolean Search Builder
+ * Core types for HireLab
  */
 
 export type SourceKey = 'linkedin' | 'github' | 'stackoverflow' | 'dribbble' | 'xing' | 'twitter';

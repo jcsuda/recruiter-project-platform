@@ -155,7 +155,7 @@ export default function SearchPage() {
 
         {/* Page Header */}
         <div style={styles.header}>
-          <h1 style={styles.pageTitle}>Boolean Search Builder</h1>
+          <h1 style={styles.pageTitle}>HireLab</h1>
           <p style={styles.subtitle}>
             Generate precise search queries for LinkedIn, GitHub, Stack Overflow, and other platforms. 
             Build complex Boolean searches to find qualified candidates efficiently.

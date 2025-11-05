@@ -607,3 +607,4 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
     </div>
   );
 }
+

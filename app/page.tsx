@@ -103,7 +103,7 @@ export default function Home() {
       <div style={styles.hero}>
         <div style={styles.heroContent}>
           <h1 style={styles.heroTitle}>
-            Recruiting Platform
+            HireLab
           </h1>
           <p style={styles.heroSubtitle}>
             Build powerful Boolean search queries and manage your entire recruiting pipeline in one place
@@ -112,7 +112,7 @@ export default function Home() {
           <div style={styles.featureGrid}>
             <div style={styles.featureCard}>
               <div style={styles.featureIcon}>🔍</div>
-              <h3 style={styles.featureTitle}>Boolean Search Builder</h3>
+              <h3 style={styles.featureTitle}>Boolean Search</h3>
               <p style={styles.featureDesc}>
                 Generate precise search queries for LinkedIn, GitHub, Stack Overflow, and more
               </p>

@@ -1,8 +1,8 @@
-# Setup Guide for Boolean Search Builder
+# Setup Guide for HireLab
 
 ## 🚀 Quick Start
 
-Follow these steps to get your Boolean Search Builder up and running.
+Follow these steps to get your HireLab up and running.
 
 ---
 
@@ -110,7 +110,7 @@ http://localhost:3000
 Make sure everything is working:
 
 - [ ] App loads without errors at http://localhost:3000
-- [ ] You see the Boolean Search Builder header
+- [ ] You see the HireLab header
 - [ ] You can switch between network tabs (LinkedIn, GitHub, etc.)
 - [ ] When you fill in the form, a Boolean query appears in the preview
 - [ ] "Open in Google" button opens a new tab with search results
@@ -221,4 +221,5 @@ Once everything is running:
 ---
 
 **Ready to start sourcing talent? 🚀**
+
 

@@ -1,7 +1,7 @@
 # Dashboard Setup Guide
 
 ## Overview
-The recruiting dashboard adds comprehensive requisition tracking, candidate pipeline visualization, and KPI monitoring to your Boolean Search Builder platform.
+The recruiting dashboard adds comprehensive requisition tracking, candidate pipeline visualization, and KPI monitoring to your HireLab platform.
 
 ## Features Added
 
@@ -197,4 +197,5 @@ Potential additions:
 For issues or questions, refer to:
 - Supabase docs: https://supabase.com/docs
 - Next.js docs: https://nextjs.org/docs
+
 

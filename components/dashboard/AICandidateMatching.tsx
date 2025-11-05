@@ -431,3 +431,4 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
     </div>
   );
 }
+

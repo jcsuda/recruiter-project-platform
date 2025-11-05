@@ -124,3 +124,4 @@ export interface AnalyticsFilters {
   requisitions?: string[];
   stages?: string[];
 }
+
