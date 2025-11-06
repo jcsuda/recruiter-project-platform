@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "HireLab",
+  title: "HIRELab",
   description: "Generate precise Boolean search strings for talent sourcing across LinkedIn, GitHub, Stack Overflow, and more.",
 };
 

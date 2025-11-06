@@ -1,5 +1,5 @@
 /**
- * HireLab Boolean Search Engine
+ * HIRELab Boolean Search Engine
  * Generates precise Boolean search strings for talent sourcing
  */
 

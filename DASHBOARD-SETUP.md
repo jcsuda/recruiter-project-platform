@@ -1,7 +1,7 @@
 # Dashboard Setup Guide
 
 ## Overview
-The recruiting dashboard adds comprehensive requisition tracking, candidate pipeline visualization, and KPI monitoring to your HireLab platform.
+The recruiting dashboard adds comprehensive requisition tracking, candidate pipeline visualization, and KPI monitoring to your HIRELab platform.
 
 ## Features Added
 

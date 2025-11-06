@@ -1,4 +1,4 @@
-# HireLab - Project Summary
+# HIRELab - Project Summary
 
 ## 🎯 Project Overview
 

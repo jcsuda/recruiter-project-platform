@@ -73,7 +73,14 @@ const styles = {
   },
   footerText: {
     fontSize: '0.75rem',
-    margin: 0,
+    margin: '0.5rem 0',
+    lineHeight: 1.6,
+  },
+  copyright: {
+    fontSize: '0.65rem',
+    margin: '1rem 0 0 0',
+    opacity: 0.7,
+    lineHeight: 1.5,
   },
 };
 
@@ -103,10 +110,10 @@ export default function Home() {
       <div style={styles.hero}>
         <div style={styles.heroContent}>
           <h1 style={styles.heroTitle}>
-            HireLab
+            HIRELab
           </h1>
           <p style={styles.heroSubtitle}>
-            Build powerful Boolean search queries and manage your entire recruiting pipeline in one place
+            Build powerful Boolean search queries and manage your entire recruiting pipeline in<br />one place
           </p>
 
           <div style={styles.featureGrid}>
@@ -114,7 +121,7 @@ export default function Home() {
               <div style={styles.featureIcon}>🔍</div>
               <h3 style={styles.featureTitle}>Boolean Search</h3>
               <p style={styles.featureDesc}>
-                Generate precise search queries for LinkedIn, GitHub, Stack Overflow, and more
+                Generate precise search queries for LinkedIn, GitHub, Stack Overflow, and more.
               </p>
             </div>
 
@@ -122,7 +129,7 @@ export default function Home() {
               <div style={styles.featureIcon}>📊</div>
               <h3 style={styles.featureTitle}>Dashboard & Analytics</h3>
               <p style={styles.featureDesc}>
-                Track KPIs, recruiting funnel, and candidate pipeline metrics
+                Track KPIs, recruiting funnel, and candidate pipeline metrics.
               </p>
             </div>
 
@@ -130,7 +137,7 @@ export default function Home() {
               <div style={styles.featureIcon}>📋</div>
               <h3 style={styles.featureTitle}>Requisition Management</h3>
               <p style={styles.featureDesc}>
-                Manage job openings, hiring managers, and track progress
+                Manage job openings, hiring managers, and track progress.
               </p>
             </div>
           </div>
@@ -140,6 +147,9 @@ export default function Home() {
       <div style={styles.footer}>
         <p style={styles.footerText}>
           Built for recruiters and talent sourcers • Fully compliant with platform Terms of Service
+        </p>
+        <p style={styles.copyright}>
+          © {new Date().getFullYear()} FunckyFoot Labs. All rights reserved. HIRELab is a product of FunckyFoot Labs.
         </p>
       </div>
     </div>

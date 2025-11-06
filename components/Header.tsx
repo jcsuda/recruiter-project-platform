@@ -137,7 +137,7 @@ export default function Header() {
         <div style={styles.container}>
           <div style={styles.titleSection}>
             <h1 style={{ ...styles.title, color: titleColor }}>
-              {isLandingPage ? 'HireLab' : 'HireLab'}
+              {isLandingPage ? 'HIRELab' : 'HIRELab'}
             </h1>
             <p style={{ ...styles.subtitle, color: subtitleColor }}>
               {isLandingPage 

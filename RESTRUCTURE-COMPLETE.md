@@ -2,7 +2,7 @@
 
 ## What Changed
 
-Your app has been restructured into a professional HireLab platform with a clear separation between the landing page and the main application.
+Your app has been restructured into a professional HIRELab platform with a clear separation between the landing page and the main application.
 
 ---
 
@@ -126,7 +126,7 @@ The new layout follows your natural workflow:
 
 ## 🎯 Success!
 
-Your HireLab platform now has:
+Your HIRELab platform now has:
 - ✅ Beautiful landing page
 - ✅ Unified dashboard with all features
 - ✅ Boolean search builder

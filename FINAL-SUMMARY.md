@@ -1,8 +1,8 @@
-# 🎉 HireLab - Complete & Operational!
+# 🎉 HIRELab - Complete & Operational!
 
 ## Overview
 
-Your HireLab platform is now **fully functional** with a beautiful landing page and a comprehensive dashboard that combines Boolean search, analytics, requisition management, and pipeline tracking in one unified workspace.
+Your HIRELab platform is now **fully functional** with a beautiful landing page and a comprehensive dashboard that combines Boolean search, analytics, requisition management, and pipeline tracking in one unified workspace.
 
 ---
 
@@ -214,7 +214,7 @@ When you're ready to enhance further, you could:
 
 ## 🎊 Congratulations!
 
-Your **HireLab** platform is complete and ready to help you source top talent! 
+Your **HIRELab** platform is complete and ready to help you source top talent! 
 
 **What you've built:**
 - Full-stack Next.js 15 application

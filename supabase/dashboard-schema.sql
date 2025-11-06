@@ -1,4 +1,4 @@
--- Dashboard Tables for HireLab
+-- Dashboard Tables for HIRELab
 -- Extends the base schema with requisitions, candidates, and pipeline tracking
 
 -- Requisitions table

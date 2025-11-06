@@ -2,7 +2,7 @@
 
 ## What's New
 
-Added a **LinkedIn Status** field to HireLab that allows you to filter LinkedIn profiles by their status hashtags.
+Added a **LinkedIn Status** field to HIRELab that allows you to filter LinkedIn profiles by their status hashtags.
 
 ---
 

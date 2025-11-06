@@ -1,5 +1,5 @@
 /**
- * Core types for HireLab
+ * Core types for HIRELab
  */
 
 export type SourceKey = 'linkedin' | 'github' | 'stackoverflow' | 'dribbble' | 'xing' | 'twitter';

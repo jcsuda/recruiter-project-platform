@@ -1,4 +1,4 @@
-# HireLab
+# HIRELab
 
 A modern, lightweight web application that generates precise Boolean search strings for sourcing talent across major public networks (LinkedIn, GitHub, Stack Overflow, Dribbble, Xing, and X/Twitter).
 

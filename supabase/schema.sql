@@ -1,4 +1,4 @@
--- HireLab Database Schema
+-- HIRELab Database Schema
 -- This schema supports saved searches, source management, and synonym expansion
 
 -- Enable UUID extension

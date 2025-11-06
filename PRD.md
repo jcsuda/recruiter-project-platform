@@ -1,8 +1,8 @@
-# HireLab - Product Requirements Document (PRD)
+# HIRELab - Product Requirements Document (PRD)
 
 ## 📋 Document Information
 
-- **Product Name**: HireLab
+- **Product Name**: HIRELab
 - **Version**: 1.0.0
 - **Last Updated**: December 2024
 - **Status**: Production Ready
@@ -10,7 +10,7 @@
 
 ## 🎯 Executive Summary
 
-HireLab is a comprehensive talent acquisition solution designed to streamline the entire recruiting process. It combines Boolean search query generation, candidate pipeline management, requisition tracking, and recruiting analytics into a single, user-friendly platform.
+HIRELab is a comprehensive talent acquisition solution designed to streamline the entire recruiting process. It combines Boolean search query generation, candidate pipeline management, requisition tracking, and recruiting analytics into a single, user-friendly platform.
 
 ## 🎯 Product Vision
 

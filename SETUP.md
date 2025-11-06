@@ -1,8 +1,8 @@
-# Setup Guide for HireLab
+# Setup Guide for HIRELab
 
 ## 🚀 Quick Start
 
-Follow these steps to get your HireLab up and running.
+Follow these steps to get your HIRELab up and running.
 
 ---
 
@@ -110,7 +110,7 @@ http://localhost:3000
 Make sure everything is working:
 
 - [ ] App loads without errors at http://localhost:3000
-- [ ] You see the HireLab header
+- [ ] You see the HIRELab header
 - [ ] You can switch between network tabs (LinkedIn, GitHub, etc.)
 - [ ] When you fill in the form, a Boolean query appears in the preview
 - [ ] "Open in Google" button opens a new tab with search results
