@@ -175,3 +175,4 @@ export interface UserPermissions {
   canAssignCandidates: boolean;
 }
 
+

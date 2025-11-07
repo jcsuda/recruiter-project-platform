@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS hire_date date;
 COMMENT ON COLUMN public.requisitions.hire_date IS 'The actual date when the position was filled';
 
 
+

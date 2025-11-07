@@ -149,7 +149,7 @@ export default function Home() {
           Built for recruiters and talent sourcers • Fully compliant with platform Terms of Service
         </p>
         <p style={styles.copyright}>
-          © {new Date().getFullYear()} FunckyFoot Labs. All rights reserved. HIRELab is a product of FunckyFoot Labs.
+          © {new Date().getFullYear()} FunkyFoot Labs. All rights reserved. HIRELab is a product of FunkyFoot Labs.
         </p>
       </div>
     </div>

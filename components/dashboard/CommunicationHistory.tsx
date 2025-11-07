@@ -334,3 +334,4 @@ export default function CommunicationHistory({ candidateId, candidateName, onRef
   );
 }
 
+

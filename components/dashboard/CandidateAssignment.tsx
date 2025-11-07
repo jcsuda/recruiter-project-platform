@@ -387,3 +387,4 @@ export default function CandidateAssignment({ candidateId, candidateName, onRefr
   );
 }
 
+

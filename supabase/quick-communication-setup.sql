@@ -33,3 +33,4 @@ create policy "Users can update their own communications" on public.communicatio
 create policy "Users can delete their own communications" on public.communications
   for delete using (auth.uid() = user_id);
 
+
