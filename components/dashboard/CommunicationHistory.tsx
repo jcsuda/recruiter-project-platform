@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { Communication, FollowUp, Interview } from '@/lib/communication-types';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import type {
+  Communication,
+  FollowUp,
+  Interview,
+} from "@/lib/communication-types";
 
 interface CommunicationHistoryProps {
   candidateId: string;
@@ -10,328 +14,233 @@ interface CommunicationHistoryProps {
   onRefresh?: () => void;
 }
 
-const styles = {
-  container: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    marginTop: '1rem',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  title: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  addButton: {
-    padding: '0.25rem 0.75rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-  },
-  tabs: {
-    display: 'flex',
-    gap: '0.5rem',
-    marginBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  tab: {
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-    background: 'none',
-    color: '#6b7280',
-    borderBottom: '2px solid transparent',
-  },
-  activeTab: {
-    color: '#2563eb',
-    borderBottomColor: '#2563eb',
-  },
-  content: {
-    minHeight: '200px',
-    maxHeight: '400px',
-    overflowY: 'auto' as const,
-  },
-  item: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '0.75rem',
-    marginBottom: '0.5rem',
-  },
-  itemHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.5rem',
-  },
-  itemTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  itemMeta: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-  itemContent: {
-    fontSize: '0.875rem',
-    color: '#374151',
-    lineHeight: '1.4',
-  },
-  badge: {
-    padding: '0.125rem 0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '12px',
-    textTransform: 'uppercase' as const,
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-  loading: {
-    textAlign: 'center' as const,
-    padding: '1rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
+const TYPE_BADGE: Record<string, string> = {
+  email: "bg-blue-100 text-blue-800",
+  phone: "bg-green-100 text-green-800",
+  meeting: "bg-amber-100 text-amber-800",
+  note: "bg-purple-100 text-purple-800",
+  reminder: "bg-red-100 text-red-800",
 };
 
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case 'email': return { background: '#dbeafe', color: '#1e40af' };
-    case 'phone': return { background: '#dcfce7', color: '#166534' };
-    case 'meeting': return { background: '#fef3c7', color: '#92400e' };
-    case 'note': return { background: '#f3e8ff', color: '#7c3aed' };
-    case 'reminder': return { background: '#fee2e2', color: '#dc2626' };
-    default: return { background: '#f3f4f6', color: '#374151' };
-  }
+const STATUS_BADGE: Record<string, string> = {
+  sent: "bg-blue-100 text-blue-800",
+  delivered: "bg-green-100 text-green-800",
+  replied: "bg-green-100 text-green-800",
+  completed: "bg-green-100 text-green-800",
+  opened: "bg-amber-100 text-amber-800",
+  failed: "bg-red-100 text-red-800",
+  scheduled: "bg-purple-100 text-purple-800",
+  pending: "bg-amber-100 text-amber-800",
+  cancelled: "bg-gray-100 text-gray-700",
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'sent': return { background: '#dbeafe', color: '#1e40af' };
-    case 'delivered': return { background: '#dcfce7', color: '#166534' };
-    case 'opened': return { background: '#fef3c7', color: '#92400e' };
-    case 'replied': return { background: '#dcfce7', color: '#166534' };
-    case 'failed': return { background: '#fee2e2', color: '#dc2626' };
-    case 'scheduled': return { background: '#f3e8ff', color: '#7c3aed' };
-    default: return { background: '#f3f4f6', color: '#374151' };
-  }
-};
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-export default function CommunicationHistory({ candidateId, candidateName, onRefresh }: CommunicationHistoryProps) {
-  const [activeTab, setActiveTab] = useState<'communications' | 'followups' | 'interviews'>('communications');
+export default function CommunicationHistory({
+  candidateId,
+}: CommunicationHistoryProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const [activeTab, setActiveTab] = useState<
+    "communications" | "followups" | "interviews"
+  >("communications");
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [candidateId, activeTab]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
-      if (activeTab === 'communications') {
-        const { data } = await supabase
-          .from('communications')
-          .select('*')
-          .eq('candidate_id', candidateId)
-          .order('created_at', { ascending: false });
-        setCommunications(data || []);
-      } else if (activeTab === 'followups') {
-        const { data } = await supabase
-          .from('follow_ups')
-          .select('*')
-          .eq('candidate_id', candidateId)
-          .order('due_date', { ascending: true });
-        setFollowUps(data || []);
-      } else if (activeTab === 'interviews') {
-        const { data } = await supabase
-          .from('interviews')
-          .select('*')
-          .eq('candidate_id', candidateId)
-          .order('scheduled_at', { ascending: false });
-        setInterviews(data || []);
+      if (activeTab === "communications") {
+        const { data, error } = await supabase
+          .from("communications")
+          .select("*")
+          .eq("candidate_id", candidateId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setCommunications(data ?? []);
+      } else if (activeTab === "followups") {
+        const { data, error } = await supabase
+          .from("follow_ups")
+          .select("*")
+          .eq("candidate_id", candidateId)
+          .order("due_date", { ascending: true });
+        if (error) throw error;
+        setFollowUps(data ?? []);
+      } else {
+        const { data, error } = await supabase
+          .from("interviews")
+          .select("*")
+          .eq("candidate_id", candidateId)
+          .order("scheduled_at", { ascending: false });
+        if (error) throw error;
+        setInterviews(data ?? []);
       }
-    } catch (error) {
-      console.error('Error loading communication data:', error);
+    } catch {
+      setFetchError("Failed to load data. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, candidateId, supabase]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const renderCommunications = () => {
-    if (loading) return <div style={styles.loading}>Loading communications...</div>;
-    if (communications.length === 0) {
-      return <div style={styles.empty}>No communications yet</div>;
-    }
-
-    return communications.map((comm) => (
-      <div key={comm.id} style={styles.item}>
-        <div style={styles.itemHeader}>
-          <div>
-            <h4 style={styles.itemTitle}>{comm.subject || `${comm.type} ${comm.direction}`}</h4>
-            <div style={styles.itemMeta}>
-              {formatDate(comm.created_at)} • {comm.direction}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <span style={{ ...styles.badge, ...getTypeColor(comm.type) }}>
-              {comm.type}
-            </span>
-            <span style={{ ...styles.badge, ...getStatusColor(comm.status) }}>
-              {comm.status}
-            </span>
-          </div>
-        </div>
-        <div style={styles.itemContent}>{comm.content}</div>
-      </div>
-    ));
-  };
-
-  const renderFollowUps = () => {
-    if (loading) return <div style={styles.loading}>Loading follow-ups...</div>;
-    if (followUps.length === 0) {
-      return <div style={styles.empty}>No follow-ups scheduled</div>;
-    }
-
-    return followUps.map((followUp) => (
-      <div key={followUp.id} style={styles.item}>
-        <div style={styles.itemHeader}>
-          <div>
-            <h4 style={styles.itemTitle}>{followUp.title}</h4>
-            <div style={styles.itemMeta}>
-              Due: {formatDate(followUp.due_date)} • Priority: {followUp.priority}
-            </div>
-          </div>
-          <span style={{ ...styles.badge, ...getStatusColor(followUp.status) }}>
-            {followUp.status}
-          </span>
-        </div>
-        {followUp.description && (
-          <div style={styles.itemContent}>{followUp.description}</div>
-        )}
-      </div>
-    ));
-  };
-
-  const renderInterviews = () => {
-    if (loading) return <div style={styles.loading}>Loading interviews...</div>;
-    if (interviews.length === 0) {
-      return <div style={styles.empty}>No interviews scheduled</div>;
-    }
-
-    return interviews.map((interview) => (
-      <div key={interview.id} style={styles.item}>
-        <div style={styles.itemHeader}>
-          <div>
-            <h4 style={styles.itemTitle}>{interview.title}</h4>
-            <div style={styles.itemMeta}>
-              {formatDate(interview.scheduled_at)} • {interview.duration_minutes} min • {interview.interview_type}
-            </div>
-          </div>
-          <span style={{ ...styles.badge, ...getStatusColor(interview.status) }}>
-            {interview.status}
-          </span>
-        </div>
-        {interview.description && (
-          <div style={styles.itemContent}>{interview.description}</div>
-        )}
-        {interview.location && (
-          <div style={{ ...styles.itemContent, fontSize: '0.75rem', color: '#6b7280' }}>
-            📍 {interview.location}
-          </div>
-        )}
-        {interview.meeting_link && (
-          <div style={{ ...styles.itemContent, fontSize: '0.75rem', color: '#2563eb' }}>
-            🔗 <a href={interview.meeting_link} target="_blank" rel="noopener noreferrer">
-              Join Meeting
-            </a>
-          </div>
-        )}
-      </div>
-    ));
-  };
+  const tabClass = (isActive: boolean) =>
+    `border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+      isActive
+        ? "border-brand-600 text-brand-600"
+        : "border-transparent text-gray-500 hover:text-gray-700"
+    }`;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>Communication History</h3>
-        <button
-          style={styles.addButton}
-          onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
-        >
-          + Add
-        </button>
-      </div>
+    <div className="mt-4 rounded-lg bg-gray-50 p-4">
+      <h3 className="mb-4 text-base font-semibold text-gray-900">
+        Communication History
+      </h3>
 
-      <div style={styles.tabs}>
+      <div className="mb-4 flex gap-2 border-b border-gray-200">
         <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'communications' && styles.activeTab),
-          }}
-          onClick={() => setActiveTab('communications')}
+          type="button"
+          className={tabClass(activeTab === "communications")}
+          onClick={() => setActiveTab("communications")}
         >
           Communications ({communications.length})
         </button>
         <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'followups' && styles.activeTab),
-          }}
-          onClick={() => setActiveTab('followups')}
+          type="button"
+          className={tabClass(activeTab === "followups")}
+          onClick={() => setActiveTab("followups")}
         >
           Follow-ups ({followUps.length})
         </button>
         <button
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'interviews' && styles.activeTab),
-          }}
-          onClick={() => setActiveTab('interviews')}
+          type="button"
+          className={tabClass(activeTab === "interviews")}
+          onClick={() => setActiveTab("interviews")}
         >
           Interviews ({interviews.length})
         </button>
       </div>
 
-      <div style={styles.content}>
-        {activeTab === 'communications' && renderCommunications()}
-        {activeTab === 'followups' && renderFollowUps()}
-        {activeTab === 'interviews' && renderInterviews()}
+      <div className="max-h-[400px] min-h-[120px] overflow-y-auto">
+        {loading ? (
+          <p className="py-4 text-center text-sm text-gray-500">Loading...</p>
+        ) : fetchError ? (
+          <p className="py-4 text-center text-sm text-red-600">{fetchError}</p>
+        ) : activeTab === "communications" ? (
+          communications.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No communications yet
+            </p>
+          ) : (
+            communications.map((c) => (
+              <div
+                key={c.id}
+                className="mb-2 rounded-md border border-gray-200 bg-white p-3"
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {c.subject || `${c.type} ${c.direction}`}
+                    </span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {formatDate(c.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <span
+                      className={`badge uppercase ${TYPE_BADGE[c.type] ?? "bg-gray-100 text-gray-700"}`}
+                    >
+                      {c.type}
+                    </span>
+                    <span
+                      className={`badge uppercase ${STATUS_BADGE[c.status] ?? "bg-gray-100 text-gray-700"}`}
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700">{c.content}</p>
+              </div>
+            ))
+          )
+        ) : activeTab === "followups" ? (
+          followUps.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No follow-ups scheduled
+            </p>
+          ) : (
+            followUps.map((f) => (
+              <div
+                key={f.id}
+                className="mb-2 rounded-md border border-gray-200 bg-white p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {f.title}
+                    </span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      Due: {formatDate(f.due_date)}
+                    </span>
+                  </div>
+                  <span
+                    className={`badge uppercase ${STATUS_BADGE[f.status] ?? "bg-gray-100 text-gray-700"}`}
+                  >
+                    {f.status}
+                  </span>
+                </div>
+                {f.description && (
+                  <p className="mt-1 text-sm text-gray-700">{f.description}</p>
+                )}
+              </div>
+            ))
+          )
+        ) : interviews.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-500">
+            No interviews scheduled
+          </p>
+        ) : (
+          interviews.map((i) => (
+            <div
+              key={i.id}
+              className="mb-2 rounded-md border border-gray-200 bg-white p-3"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {i.title}
+                  </span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    {formatDate(i.scheduled_at)} &bull; {i.duration_minutes}min
+                  </span>
+                </div>
+                <span
+                  className={`badge uppercase ${STATUS_BADGE[i.status] ?? "bg-gray-100 text-gray-700"}`}
+                >
+                  {i.status}
+                </span>
+              </div>
+              {i.location && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Location: {i.location}
+                </p>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
-
-

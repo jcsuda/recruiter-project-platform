@@ -1,249 +1,77 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { SearchTemplate, AdvancedSearchFilters } from '@/lib/ai-types';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
+import type { SearchTemplate, AdvancedSearchFilters } from "@/lib/ai-types";
 
 interface AdvancedSearchProps {
   userId: string;
-  onSearchResults?: (results: any[]) => void;
+  onSearchResults?: (results: Record<string, unknown>[]) => void;
 }
 
-const styles = {
-  container: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    padding: '2rem',
-    marginBottom: '2rem',
-  },
-  header: {
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  subtitle: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  searchForm: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '1.5rem',
-    marginBottom: '2rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  input: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  select: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    background: '#fff',
-  },
-  textarea: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    minHeight: '80px',
-    fontFamily: 'inherit',
-  },
-  checkboxGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-  },
-  checkbox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  checkboxInput: {
-    margin: 0,
-  },
-  checkboxLabel: {
-    fontSize: '0.875rem',
-    color: '#374151',
-    margin: 0,
-  },
-  rangeInput: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  rangeInputField: {
-    flex: 1,
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem',
-    justifyContent: 'flex-end',
-    marginTop: '2rem',
-  },
-  button: {
-    padding: '0.75rem 1.5rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-  },
-  searchButton: {
-    background: '#2563eb',
-    color: '#fff',
-  },
-  saveButton: {
-    background: '#10b981',
-    color: '#fff',
-  },
-  clearButton: {
-    background: '#fff',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-  },
-  templatesSection: {
-    marginTop: '2rem',
-    paddingTop: '2rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  templatesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1rem',
-    marginTop: '1rem',
-  },
-  templateCard: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    cursor: 'pointer',
-  },
-  templateName: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  templateDescription: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: '0 0 0.5rem 0',
-  },
-  templateUsage: {
-    fontSize: '0.625rem',
-    color: '#9ca3af',
-    margin: 0,
-  },
-  resultsSection: {
-    marginTop: '2rem',
-    paddingTop: '2rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  resultsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  resultsCount: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  loading: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-};
-
-export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSearchProps) {
+export default function AdvancedSearch({
+  userId,
+  onSearchResults,
+}: AdvancedSearchProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [filters, setFilters] = useState<AdvancedSearchFilters>({});
   const [templates, setTemplates] = useState<SearchTemplate[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<Record<string, unknown>[]>([]);
   const [searching, setSearching] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
-  const [templateName, setTemplateName] = useState('');
+  const [templateName, setTemplateName] = useState("");
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("search_templates")
+        .select("*")
+        .eq("user_id", userId)
+        .order("usage_count", { ascending: false });
+
+      setTemplates(data || []);
+    } catch {
+      // Templates unavailable; keep empty list
+    }
+  }, [userId, supabase]);
 
   useEffect(() => {
     loadTemplates();
-  }, [userId]);
+  }, [loadTemplates]);
 
-  const loadTemplates = async () => {
-    try {
-      const { data } = await supabase
-        .from('search_templates')
-        .select('*')
-        .eq('user_id', userId)
-        .order('usage_count', { ascending: false });
-
-      setTemplates(data || []);
-    } catch (error) {
-      console.error('Error loading templates:', error);
-    }
-  };
+  // Escape PostgREST filter-injection characters from skill values
+  const escapePostgREST = (s: string) => s.replace(/[,().]/g, "");
+  // Escape PostgreSQL LIKE pattern special characters
+  const escapeLike = (s: string) => s.replace(/%/g, "\\%").replace(/_/g, "\\_");
 
   const handleSearch = async () => {
     setSearching(true);
     try {
-      // Build search query based on filters
       let query = supabase
-        .from('candidates')
-        .select('*')
-        .eq('user_id', userId);
+        .from("candidates")
+        .select("*")
+        .eq("user_id", userId);
 
-      // Apply filters
       if (filters.skills && filters.skills.length > 0) {
-        // This would need a more sophisticated search implementation
-        // For now, we'll do a simple text search
-        query = query.or(filters.skills.map(skill => `notes.ilike.%${skill}%`).join(','));
+        query = query.or(
+          filters.skills
+            .map((skill) => `notes.ilike.%${escapePostgREST(skill)}%`)
+            .join(",")
+        );
       }
 
       if (filters.experience_years) {
-        // This would need experience data in the candidates table
-        // For now, we'll skip this filter
+        // Experience filter requires experience data on candidates; skipped for now
       }
 
       if (filters.location?.city) {
-        query = query.ilike('notes', `%${filters.location.city}%`);
+        query = query.ilike("notes", `%${escapeLike(filters.location.city)}%`);
       }
 
       if (filters.source && filters.source.length > 0) {
-        query = query.in('source', filters.source);
+        query = query.in("source", filters.source);
       }
 
       const { data, error } = await query;
@@ -253,19 +81,18 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
       setSearchResults(data || []);
       onSearchResults?.(data || []);
 
-      // Log search analytics
-      await supabase
-        .from('search_analytics')
-        .insert({
-          user_id: userId,
-          search_query: JSON.stringify(filters),
-          search_filters: filters,
-          results_count: data?.length || 0,
-          search_source: 'advanced_search'
-        });
-    } catch (error) {
-      console.error('Error searching:', error);
-      alert('Search failed');
+      await supabase.from("search_analytics").insert({
+        user_id: userId,
+        search_query: JSON.stringify(filters),
+        search_filters: filters,
+        results_count: data?.length || 0,
+        search_source: "advanced_search",
+      });
+    } catch (error: unknown) {
+      toast(
+        error instanceof Error ? error.message : "Search failed",
+        "error"
+      );
     } finally {
       setSearching(false);
     }
@@ -273,41 +100,41 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
-      alert('Please enter a template name');
+      toast("Please enter a template name", "warning");
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('search_templates')
-        .insert({
-          user_id: userId,
-          name: templateName,
-          description: 'Advanced search template',
-          search_criteria: filters,
-          is_public: false
-        });
+      const { error } = await supabase.from("search_templates").insert({
+        user_id: userId,
+        name: templateName,
+        description: "Advanced search template",
+        search_criteria: filters,
+        is_public: false,
+      });
 
       if (error) throw error;
 
       setShowSaveTemplate(false);
-      setTemplateName('');
+      setTemplateName("");
       loadTemplates();
-      alert('Template saved successfully');
-    } catch (error) {
-      console.error('Error saving template:', error);
-      alert('Failed to save template');
+      toast("Template saved successfully", "success");
+    } catch (error: unknown) {
+      toast(
+        error instanceof Error ? error.message : "Failed to save template",
+        "error"
+      );
     }
   };
 
   const handleLoadTemplate = (template: SearchTemplate) => {
-    setFilters(template.search_criteria);
-    
-    // Update usage count
-    supabase
-      .from('search_templates')
+    setFilters(template.search_criteria as AdvancedSearchFilters);
+
+    // Fire-and-forget usage count update; errors are non-critical
+    void supabase
+      .from("search_templates")
       .update({ usage_count: template.usage_count + 1 })
-      .eq('id', template.id);
+      .eq("id", template.id);
   };
 
   const handleClearFilters = () => {
@@ -316,159 +143,184 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Advanced Search</h2>
-        <p style={styles.subtitle}>
-          Use advanced filters to find the perfect candidates with AI-powered matching
+    <div className="card mb-8">
+      <div className="mb-8 border-b border-gray-200 pb-4">
+        <h2 className="mb-2 text-2xl font-semibold text-gray-900">
+          Advanced Search
+        </h2>
+        <p className="m-0 text-sm text-gray-500">
+          Use advanced filters to find the perfect candidates with AI-powered
+          matching
         </p>
       </div>
 
-      <div style={styles.searchForm}>
-        {/* Skills Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Skills</label>
+      <div className="mb-8 grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Skills</label>
           <textarea
-            style={styles.textarea}
+            className="input-field min-h-[80px] font-[inherit]"
             placeholder="Enter skills separated by commas (e.g., React, TypeScript, Node.js)"
-            value={filters.skills?.join(', ') || ''}
-            onChange={(e) => setFilters({
-              ...filters,
-              skills: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-            })}
+            value={filters.skills?.join(", ") || ""}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                skills: e.target.value
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
           />
         </div>
 
-        {/* Experience Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Years of Experience</label>
-          <div style={styles.rangeInput}>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">
+            Years of Experience
+          </label>
+          <div className="flex items-center gap-2">
             <input
               type="number"
-              style={styles.rangeInputField}
+              className="input-field min-w-0 flex-1"
               placeholder="Min"
-              value={filters.experience_years?.min || ''}
-              onChange={(e) => setFilters({
-                ...filters,
-                experience_years: {
-                  ...filters.experience_years,
-                  min: parseInt(e.target.value) || undefined
-                }
-              })}
+              value={filters.experience_years?.min ?? ""}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  experience_years: {
+                    ...filters.experience_years,
+                    min: parseInt(e.target.value, 10) || undefined,
+                  },
+                } as AdvancedSearchFilters)
+              }
             />
-            <span>-</span>
+            <span className="text-gray-500">-</span>
             <input
               type="number"
-              style={styles.rangeInputField}
+              className="input-field min-w-0 flex-1"
               placeholder="Max"
-              value={filters.experience_years?.max || ''}
-              onChange={(e) => setFilters({
-                ...filters,
-                experience_years: {
-                  ...filters.experience_years,
-                  max: parseInt(e.target.value) || undefined
-                }
-              })}
+              value={filters.experience_years?.max ?? ""}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  experience_years: {
+                    ...filters.experience_years,
+                    max: parseInt(e.target.value, 10) || undefined,
+                  },
+                } as AdvancedSearchFilters)
+              }
             />
           </div>
         </div>
 
-        {/* Location Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Location</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Location</label>
           <input
             type="text"
-            style={styles.input}
+            className="input-field"
             placeholder="City, State, Country"
-            value={filters.location?.city || ''}
-            onChange={(e) => setFilters({
-              ...filters,
-              location: {
-                ...filters.location,
-                city: e.target.value
-              }
-            })}
-          />
-          <div style={styles.checkbox}>
-            <input
-              type="checkbox"
-              style={styles.checkboxInput}
-              checked={filters.location?.remote || false}
-              onChange={(e) => setFilters({
+            value={filters.location?.city || ""}
+            onChange={(e) =>
+              setFilters({
                 ...filters,
                 location: {
                   ...filters.location,
-                  remote: e.target.checked
-                }
-              })}
+                  city: e.target.value,
+                },
+              })
+            }
+          />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="m-0 h-4 w-4 rounded border-gray-300"
+              checked={filters.location?.remote || false}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  location: {
+                    ...filters.location,
+                    remote: e.target.checked,
+                  },
+                })
+              }
             />
-            <label style={styles.checkboxLabel}>Remote OK</label>
+            <label className="m-0 text-sm text-gray-700">Remote OK</label>
           </div>
         </div>
 
-        {/* Source Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Source</label>
-          <div style={styles.checkboxGroup}>
-            {['LinkedIn', 'GitHub', 'Stack Overflow', 'Dribbble', 'Indeed', 'Referral'].map(source => (
-              <div key={source} style={styles.checkbox}>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Source</label>
+          <div className="flex flex-col gap-2">
+            {[
+              "LinkedIn",
+              "GitHub",
+              "Stack Overflow",
+              "Dribbble",
+              "Indeed",
+              "Referral",
+            ].map((source) => (
+              <div key={source} className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  style={styles.checkboxInput}
+                  className="m-0 h-4 w-4 rounded border-gray-300"
                   checked={filters.source?.includes(source) || false}
                   onChange={(e) => {
                     const currentSources = filters.source || [];
                     if (e.target.checked) {
                       setFilters({
                         ...filters,
-                        source: [...currentSources, source]
+                        source: [...currentSources, source],
                       });
                     } else {
                       setFilters({
                         ...filters,
-                        source: currentSources.filter(s => s !== source)
+                        source: currentSources.filter((s) => s !== source),
                       });
                     }
                   }}
                 />
-                <label style={styles.checkboxLabel}>{source}</label>
+                <label className="m-0 text-sm text-gray-700">{source}</label>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Education Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Education</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Education</label>
           <select
-            style={styles.select}
-            value={filters.education?.degree || ''}
-            onChange={(e) => setFilters({
-              ...filters,
-              education: {
-                ...filters.education,
-                degree: e.target.value
-              }
-            })}
+            className="select-field"
+            value={filters.education?.degree || ""}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                education: {
+                  ...filters.education,
+                  degree: e.target.value,
+                },
+              })
+            }
           >
             <option value="">Any Degree</option>
             <option value="high_school">High School</option>
-            <option value="bachelors">Bachelor's</option>
-            <option value="masters">Master's</option>
+            <option value="bachelors">Bachelor&apos;s</option>
+            <option value="masters">Master&apos;s</option>
             <option value="phd">PhD</option>
           </select>
         </div>
 
-        {/* Availability Filter */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Availability</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">
+            Availability
+          </label>
           <select
-            style={styles.select}
-            value={filters.availability || ''}
-            onChange={(e) => setFilters({
-              ...filters,
-              availability: e.target.value
-            })}
+            className="select-field"
+            value={filters.availability || ""}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                availability: e.target.value,
+              })
+            }
           >
             <option value="">Any</option>
             <option value="immediate">Immediate</option>
@@ -479,77 +331,63 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
         </div>
       </div>
 
-      <div style={styles.buttonGroup}>
+      <div className="mt-8 flex flex-wrap justify-end gap-4">
         <button
+          type="button"
           onClick={handleClearFilters}
-          style={{ ...styles.button, ...styles.clearButton }}
-          onMouseOver={(e) => (e.currentTarget.style.background = '#f9fafb')}
-          onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+          className="btn-secondary"
         >
           Clear Filters
         </button>
         <button
+          type="button"
           onClick={() => setShowSaveTemplate(true)}
-          style={{ ...styles.button, ...styles.saveButton }}
-          onMouseOver={(e) => (e.currentTarget.style.background = '#059669')}
-          onMouseOut={(e) => (e.currentTarget.style.background = '#10b981')}
+          className="btn-secondary"
         >
           Save Template
         </button>
         <button
+          type="button"
           onClick={handleSearch}
           disabled={searching}
-          style={{
-            ...styles.button,
-            ...styles.searchButton,
-            background: searching ? '#9ca3af' : '#2563eb',
-            cursor: searching ? 'not-allowed' : 'pointer'
-          }}
-          onMouseOver={(e) => !searching && (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseOut={(e) => !searching && (e.currentTarget.style.background = '#2563eb')}
+          className="btn-primary"
         >
-          {searching ? 'Searching...' : 'Search Candidates'}
+          {searching ? "Searching..." : "Search Candidates"}
         </button>
       </div>
 
-      {/* Save Template Modal */}
       {showSaveTemplate && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: '#fff',
-            padding: '2rem',
-            borderRadius: '8px',
-            minWidth: '400px'
-          }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>Save Search Template</h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50">
+          <div
+            className="card min-w-[min(100%,400px)] max-w-[calc(100%-2rem)]"
+            role="dialog"
+            aria-labelledby="save-template-title"
+          >
+            <h3
+              id="save-template-title"
+              className="mb-4 mt-0 text-lg font-semibold"
+            >
+              Save Search Template
+            </h3>
             <input
               type="text"
-              style={styles.input}
+              className="input-field"
               placeholder="Template name"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
             />
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+            <div className="mt-4 flex flex-wrap justify-end gap-4">
               <button
+                type="button"
                 onClick={() => setShowSaveTemplate(false)}
-                style={{ ...styles.button, ...styles.clearButton }}
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveTemplate}
-                style={{ ...styles.button, ...styles.saveButton }}
+                className="btn-primary"
               >
                 Save
               </button>
@@ -558,47 +396,53 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
         </div>
       )}
 
-      {/* Search Templates */}
       {templates.length > 0 && (
-        <div style={styles.templatesSection}>
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: '600' }}>
+        <div className="mt-8 border-t border-gray-200 pt-8">
+          <h3 className="mb-4 mt-0 text-lg font-semibold">
             Saved Search Templates
           </h3>
-          <div style={styles.templatesGrid}>
+          <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
             {templates.map((template) => (
               <div
                 key={template.id}
-                style={styles.templateCard}
+                className="card cursor-pointer transition-colors hover:bg-gray-50"
                 onClick={() => handleLoadTemplate(template)}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#f3f4f6')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#f9fafb')}
               >
-                <div style={styles.templateName}>{template.name}</div>
-                <div style={styles.templateDescription}>{template.description}</div>
-                <div style={styles.templateUsage}>Used {template.usage_count} times</div>
+                <div className="mb-2 text-sm font-semibold text-gray-900">
+                  {template.name}
+                </div>
+                <div className="mb-2 text-xs text-gray-500">
+                  {template.description}
+                </div>
+                <span className="badge bg-gray-100 text-gray-600">
+                  Used {template.usage_count} times
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Search Results */}
       {searchResults.length > 0 && (
-        <div style={styles.resultsSection}>
-          <div style={styles.resultsHeader}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>
-              Search Results
-            </h3>
-            <div style={styles.resultsCount}>
+        <div className="mt-8 border-t border-gray-200 pt-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="m-0 text-lg font-semibold">Search Results</h3>
+            <p className="m-0 text-sm text-gray-500">
               {searchResults.length} candidates found
-            </div>
+            </p>
           </div>
-          <div style={styles.templatesGrid}>
-            {searchResults.map((candidate) => (
-              <div key={candidate.id} style={styles.templateCard}>
-                <div style={styles.templateName}>{candidate.name}</div>
-                <div style={styles.templateDescription}>{candidate.email}</div>
-                <div style={styles.templateUsage}>Source: {candidate.source}</div>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
+            {searchResults.map((candidate, index) => (
+              <div key={String(candidate.id ?? index)} className="card">
+                <div className="mb-2 text-sm font-semibold text-gray-900">
+                  {String(candidate.name ?? "")}
+                </div>
+                <div className="mb-2 text-xs text-gray-500">
+                  {String(candidate.email ?? "")}
+                </div>
+                <span className="badge bg-gray-100 text-gray-600">
+                  Source: {String(candidate.source ?? "Unknown")}
+                </span>
               </div>
             ))}
           </div>
@@ -607,5 +451,3 @@ export default function AdvancedSearch({ userId, onSearchResults }: AdvancedSear
     </div>
   );
 }
-
-

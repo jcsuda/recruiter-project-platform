@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { Candidate, PipelineStage } from '@/lib/dashboard-types';
+import { useState, useEffect, useMemo } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
+import type { Candidate, PipelineStage } from "@/lib/dashboard-types";
 
 interface EditCandidateModalProps {
   isOpen: boolean;
@@ -12,108 +13,6 @@ interface EditCandidateModalProps {
   onSuccess: () => void;
 }
 
-const styles = {
-  overlay: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1001,
-  },
-  modal: {
-    background: '#fff',
-    borderRadius: '12px',
-    padding: '2rem',
-    width: '90%',
-    maxWidth: '600px',
-    maxHeight: '90vh',
-    overflowY: 'auto' as const,
-  },
-  header: {
-    marginBottom: '1.5rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  input: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  select: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    background: '#fff',
-  },
-  textarea: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    minHeight: '100px',
-    fontFamily: 'inherit',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '1.5rem',
-    justifyContent: 'flex-end',
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-  },
-  cancelButton: {
-    background: '#fff',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-  },
-  submitButton: {
-    background: '#2563eb',
-    color: '#fff',
-  },
-  error: {
-    padding: '0.75rem',
-    background: '#fee2e2',
-    border: '1px solid #fca5a5',
-    borderRadius: '6px',
-    color: '#991b1b',
-    fontSize: '0.875rem',
-  },
-};
-
 export default function EditCandidateModal({
   isOpen,
   onClose,
@@ -121,28 +20,29 @@ export default function EditCandidateModal({
   stages,
   onSuccess,
 }: EditCandidateModalProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    source: '',
-    current_stage_id: '',
-    status: 'active',
-    notes: '',
-  });
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    source: "",
+    current_stage_id: "",
+    status: "active",
+    notes: "",
+  });
 
   useEffect(() => {
     if (candidate) {
       setFormData({
-        name: candidate.name || '',
-        email: candidate.email || '',
-        phone: candidate.phone || '',
-        source: candidate.source || '',
-        current_stage_id: candidate.current_stage_id || '',
-        status: candidate.status || 'active',
-        notes: candidate.notes || '',
+        name: candidate.name || "",
+        email: candidate.email || "",
+        phone: candidate.phone || "",
+        source: candidate.source || "",
+        current_stage_id: candidate.current_stage_id || "",
+        status: candidate.status || "active",
+        notes: candidate.notes || "",
       });
     }
   }, [candidate]);
@@ -150,13 +50,11 @@ export default function EditCandidateModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!candidate) return;
-
     setLoading(true);
-    setError('');
 
     try {
-      const { error: updateError } = await supabase
-        .from('candidates')
+      const { error } = await supabase
+        .from("candidates")
         .update({
           name: formData.name,
           email: formData.email,
@@ -167,15 +65,17 @@ export default function EditCandidateModal({
           notes: formData.notes || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', candidate.id);
+        .eq("id", candidate.id)
+        .eq("user_id", candidate.user_id);
 
-      if (updateError) throw updateError;
-
+      if (error) throw error;
+      toast("Candidate updated successfully!", "success");
       onSuccess();
       onClose();
-    } catch (err) {
-      console.error('Error updating candidate:', err);
-      setError('Failed to update candidate. Please try again.');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update candidate";
+      toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -184,73 +84,116 @@ export default function EditCandidateModal({
   if (!isOpen || !candidate) return null;
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>Edit Candidate</h2>
-        </div>
+    <div
+      className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-xl bg-white p-8"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <h2 className="mb-6 border-b border-gray-200 pb-4 text-xl font-semibold text-gray-900">
+          Edit Candidate
+        </h2>
 
-        {error && <div style={styles.error}>{error}</div>}
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Name *</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Name *</label>
             <input
               type="text"
-              style={styles.input}
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="input-field"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Email *</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">
+              Email *
+            </label>
             <input
               type="email"
-              style={styles.input}
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="input-field"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Phone</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Phone</label>
             <input
               type="tel"
-              style={styles.input}
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              className="input-field"
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Source</label>
-            <select
-              style={styles.select}
-              value={formData.source}
-              onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-            >
-              <option value="">Select source</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="GitHub">GitHub</option>
-              <option value="Stack Overflow">Stack Overflow</option>
-              <option value="Dribbble">Dribbble</option>
-              <option value="Indeed">Indeed</option>
-              <option value="Referral">Referral</option>
-              <option value="Career Site">Career Site</option>
-              <option value="Other">Other</option>
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                Source
+              </label>
+              <select
+                value={formData.source}
+                onChange={(e) =>
+                  setFormData({ ...formData, source: e.target.value })
+                }
+                className="select-field"
+              >
+                <option value="">Select source</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="GitHub">GitHub</option>
+                <option value="Indeed">Indeed</option>
+                <option value="Referral">Referral</option>
+                <option value="Career Site">Career Site</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                Status *
+              </label>
+              <select
+                required
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value })
+                }
+                className="select-field"
+              >
+                <option value="active">Active</option>
+                <option value="hired">Hired</option>
+                <option value="rejected">Rejected</option>
+                <option value="withdrawn">Withdrawn</option>
+              </select>
+            </div>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Pipeline Stage *</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">
+              Pipeline Stage *
+            </label>
             <select
-              style={styles.select}
-              value={formData.current_stage_id}
-              onChange={(e) => setFormData({ ...formData, current_stage_id: e.target.value })}
               required
+              value={formData.current_stage_id}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  current_stage_id: e.target.value,
+                })
+              }
+              className="select-field"
             >
               <option value="">Select stage</option>
               {stages.map((stage) => (
@@ -261,49 +204,29 @@ export default function EditCandidateModal({
             </select>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Status *</label>
-            <select
-              style={styles.select}
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              required
-            >
-              <option value="active">Active</option>
-              <option value="hired">Hired</option>
-              <option value="rejected">Rejected</option>
-              <option value="withdrawn">Withdrawn</option>
-            </select>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Notes</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Notes</label>
             <textarea
-              style={styles.textarea}
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, notes: e.target.value })
+              }
+              className="input-field min-h-[100px] resize-y"
               placeholder="Add any notes about this candidate..."
             />
           </div>
 
-          <div style={styles.buttonGroup}>
+          <div className="mt-2 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              style={{ ...styles.button, ...styles.cancelButton }}
-              onMouseOver={(e) => (e.currentTarget.style.background = '#f9fafb')}
-              onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+              className="btn-secondary"
+              disabled={loading}
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ ...styles.button, ...styles.submitButton }}
-              onMouseOver={(e) => !loading && (e.currentTarget.style.background = '#1d4ed8')}
-              onMouseOut={(e) => !loading && (e.currentTarget.style.background = '#2563eb')}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -311,6 +234,3 @@ export default function EditCandidateModal({
     </div>
   );
 }
-
-
-

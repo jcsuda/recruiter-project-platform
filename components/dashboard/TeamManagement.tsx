@@ -1,476 +1,317 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { Team, TeamMember, TeamInviteFormData } from '@/lib/team-types';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
+import type { Team, TeamMember, TeamInviteFormData } from "@/lib/team-types";
 
 interface TeamManagementProps {
   userId: string;
   onRefresh?: () => void;
 }
 
-const styles = {
-  container: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    padding: '2rem',
-    marginBottom: '2rem',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  addButton: {
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-  },
-  teamInfo: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1.5rem',
-    marginBottom: '2rem',
-  },
-  teamName: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  teamDescription: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: '0 0 1rem 0',
-  },
-  teamStats: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '1rem',
-  },
-  statCard: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '1rem',
-    textAlign: 'center' as const,
-  },
-  statValue: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.25rem 0',
-  },
-  statLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  membersSection: {
-    marginBottom: '2rem',
-  },
-  sectionTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 1rem 0',
-  },
-  memberCard: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    marginBottom: '0.75rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  memberInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  memberAvatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    background: '#e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  memberDetails: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  memberName: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#111827',
-    margin: '0 0 0.25rem 0',
-  },
-  memberEmail: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  memberRole: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  roleBadge: {
-    padding: '0.25rem 0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '12px',
-    textTransform: 'uppercase' as const,
-  },
-  statusBadge: {
-    padding: '0.25rem 0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '12px',
-    textTransform: 'uppercase' as const,
-  },
-  inviteForm: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1.5rem',
-    marginTop: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-    marginBottom: '1rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  input: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  select: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    background: '#fff',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '0.75rem',
-    justifyContent: 'flex-end',
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-  },
-  cancelButton: {
-    background: '#fff',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-  },
-  submitButton: {
-    background: '#2563eb',
-    color: '#fff',
-  },
-  loading: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-};
+/** Supabase join may include auth-style metadata not on the base TeamMember type */
+function getMemberUserExtras(member: TeamMember) {
+  return member.user as
+    | (NonNullable<TeamMember["user"]> & {
+        raw_user_meta_data?: { full_name?: string };
+      })
+    | undefined;
+}
 
-const getRoleColor = (role: string) => {
+const getRoleBadgeClasses = (role: string) => {
   switch (role) {
-    case 'owner': return { background: '#fef3c7', color: '#92400e' };
-    case 'admin': return { background: '#dbeafe', color: '#1e40af' };
-    case 'recruiter': return { background: '#dcfce7', color: '#166534' };
-    case 'viewer': return { background: '#f3f4f6', color: '#374151' };
-    default: return { background: '#f3f4f6', color: '#374151' };
+    case "owner":
+      return "bg-amber-100 text-amber-900";
+    case "admin":
+      return "bg-blue-100 text-blue-900";
+    case "recruiter":
+      return "bg-emerald-100 text-emerald-800";
+    case "viewer":
+      return "bg-gray-100 text-gray-700";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
 };
 
-const getStatusColor = (status: string) => {
+const getStatusBadgeClasses = (status: string) => {
   switch (status) {
-    case 'active': return { background: '#dcfce7', color: '#166534' };
-    case 'pending': return { background: '#fef3c7', color: '#92400e' };
-    case 'suspended': return { background: '#fee2e2', color: '#dc2626' };
-    default: return { background: '#f3f4f6', color: '#374151' };
+    case "active":
+      return "bg-emerald-100 text-emerald-800";
+    case "pending":
+      return "bg-amber-100 text-amber-900";
+    case "suspended":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
 };
 
-export default function TeamManagement({ userId, onRefresh }: TeamManagementProps) {
+const INVITABLE_ROLES = ["recruiter", "admin", "viewer"] as const;
+type InvitableRole = (typeof INVITABLE_ROLES)[number];
+
+function isInvitableRole(value: string): value is InvitableRole {
+  return (INVITABLE_ROLES as readonly string[]).includes(value);
+}
+
+export default function TeamManagement({
+  userId,
+}: TeamManagementProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteForm, setInviteForm] = useState<TeamInviteFormData>({
-    email: '',
-    role: 'recruiter',
+    email: "",
+    role: "recruiter",
     permissions: {},
   });
 
-  useEffect(() => {
-    loadTeamData();
-  }, [userId]);
-
-  const loadTeamData = async () => {
+  const loadTeamData = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('Loading team data for user:', userId);
-      
-      // Load user's team
-      const { data: teamData, error: teamError } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('owner_id', userId)
+      const { data: teamData } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("owner_id", userId)
         .single();
-
-      console.log('Team data:', teamData);
-      console.log('Team error:', teamError);
 
       if (teamData) {
         setTeam(teamData);
 
-        // Load team members
-        const { data: membersData, error: membersError } = await supabase
-          .from('team_members')
-          .select(`
+        const { data: membersData } = await supabase
+          .from("team_members")
+          .select(
+            `
             *,
             user:user_id (
               id,
               email,
               raw_user_meta_data
             )
-          `)
-          .eq('team_id', teamData.id);
+          `
+          )
+          .eq("team_id", teamData.id);
 
-        console.log('Members data:', membersData);
-        console.log('Members error:', membersError);
         setMembers(membersData || []);
       } else {
-        console.log('No team found for user');
         setTeam(null);
         setMembers([]);
       }
-    } catch (error) {
-      console.error('Error loading team data:', error);
+    } catch {
       setTeam(null);
       setMembers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, supabase]); // supabase is stable (useMemo)
+
+  useEffect(() => {
+    loadTeamData();
+  }, [loadTeamData]);
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!team) return;
     try {
-      // Check if user exists
-      const { data: existingUser } = await supabase
-        .from('team_members')
-        .select('user_id')
-        .eq('team_id', team?.id)
-        .eq('user_id', inviteForm.email);
+      // Check if an invitation for this email already exists on this team
+      const { data: existingInvite } = await supabase
+        .from("team_invitations")
+        .select("id")
+        .eq("team_id", team.id)
+        .eq("email", inviteForm.email)
+        .eq("status", "pending");
 
-      if (existingUser && existingUser.length > 0) {
-        alert('User is already a member of this team');
+      if (existingInvite && existingInvite.length > 0) {
+        toast("An invitation has already been sent to this email", "warning");
         return;
       }
 
-      // For now, we'll create a placeholder invitation
-      // In a real implementation, you'd send an email invitation
-      alert(`Invitation sent to ${inviteForm.email}`);
-      
+      // Record the invitation in the database
+      const { error } = await supabase.from("team_invitations").insert({
+        team_id: team.id,
+        email: inviteForm.email,
+        role: inviteForm.role,
+        invited_by: userId,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      // NOTE: Actual email delivery requires an email service (e.g. Resend, SendGrid).
+      // The invitation is recorded; integrate an email API to send the message.
+      toast(
+        `Invitation recorded for ${inviteForm.email}. Connect an email service to deliver it.`,
+        "info"
+      );
+
       setShowInviteForm(false);
       setInviteForm({
-        email: '',
-        role: 'recruiter',
+        email: "",
+        role: "recruiter",
         permissions: {},
       });
-    } catch (error) {
-      console.error('Error inviting member:', error);
-      alert('Failed to send invitation');
+    } catch {
+      toast("Failed to send invitation", "error");
     }
   };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading team data...</div>;
+    return (
+      <div className="py-8 text-center text-sm text-gray-500">
+        Loading team data...
+      </div>
+    );
   }
 
   if (!team) {
-    return <div style={styles.empty}>No team found</div>;
+    return (
+      <div className="py-8 text-center text-sm text-gray-500">No team found</div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Team Management</h2>
+    <div className="card mb-8">
+      <div className="mb-8 flex items-center justify-between border-b border-gray-200 pb-4">
+        <h2 className="m-0 text-xl font-semibold text-gray-900">Team Management</h2>
         <button
+          type="button"
           onClick={() => setShowInviteForm(!showInviteForm)}
-          style={styles.addButton}
-          onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
+          className="btn-primary"
         >
           + Invite Member
         </button>
       </div>
 
-      {/* Team Information */}
-      <div style={styles.teamInfo}>
-        <h3 style={styles.teamName}>{team.name}</h3>
+      <div className="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-6">
+        <h3 className="mb-2 mt-0 text-lg font-semibold text-gray-900">{team.name}</h3>
         {team.description && (
-          <p style={styles.teamDescription}>{team.description}</p>
+          <p className="mb-4 mt-0 text-sm text-gray-500">{team.description}</p>
         )}
-        <div style={styles.teamStats}>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>{members.length}</div>
-            <div style={styles.statLabel}>Team Members</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>
-              {members.filter(m => m.status === 'active').length}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+          <div className="card p-4 text-center">
+            <div className="mb-1 text-2xl font-semibold text-gray-900">
+              {members.length}
             </div>
-            <div style={styles.statLabel}>Active Members</div>
+            <div className="m-0 text-xs text-gray-500">Team Members</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>
-              {members.filter(m => m.role === 'recruiter').length}
+          <div className="card p-4 text-center">
+            <div className="mb-1 text-2xl font-semibold text-gray-900">
+              {members.filter((m) => m.status === "active").length}
             </div>
-            <div style={styles.statLabel}>Recruiters</div>
+            <div className="m-0 text-xs text-gray-500">Active Members</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="mb-1 text-2xl font-semibold text-gray-900">
+              {members.filter((m) => m.role === "recruiter").length}
+            </div>
+            <div className="m-0 text-xs text-gray-500">Recruiters</div>
           </div>
         </div>
       </div>
 
-      {/* Team Members */}
-      <div style={styles.membersSection}>
-        <h3 style={styles.sectionTitle}>Team Members</h3>
+      <div className="mb-8">
+        <h3 className="mb-4 mt-0 text-lg font-semibold text-gray-900">Team Members</h3>
         {members.length === 0 ? (
-          <div style={styles.empty}>No team members yet</div>
+          <div className="py-8 text-center text-sm text-gray-500">
+            No team members yet
+          </div>
         ) : (
-          members.map((member) => (
-            <div key={member.id} style={styles.memberCard}>
-              <div style={styles.memberInfo}>
-                <div style={styles.memberAvatar}>
-                  {getInitials(member.user?.raw_user_meta_data?.full_name || member.user?.email || 'U')}
-                </div>
-                <div style={styles.memberDetails}>
-                  <div style={styles.memberName}>
-                    {member.user?.raw_user_meta_data?.full_name || member.user?.email}
+          members.map((member) => {
+            const u = getMemberUserExtras(member);
+            const displayName =
+              u?.raw_user_meta_data?.full_name || u?.email || "U";
+            return (
+              <div
+                key={member.id}
+                className="mb-3 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-500">
+                    {getInitials(displayName)}
                   </div>
-                  <div style={styles.memberEmail}>{member.user?.email}</div>
+                  <div className="flex flex-col">
+                    <div className="mb-1 text-sm font-medium text-gray-900">
+                      {u?.raw_user_meta_data?.full_name || u?.email}
+                    </div>
+                    <div className="m-0 text-xs text-gray-500">{u?.email}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`badge uppercase ${getRoleBadgeClasses(member.role)}`}
+                  >
+                    {member.role}
+                  </span>
+                  <span
+                    className={`badge uppercase ${getStatusBadgeClasses(member.status)}`}
+                  >
+                    {member.status}
+                  </span>
                 </div>
               </div>
-              <div style={styles.memberRole}>
-                <span style={{
-                  ...styles.roleBadge,
-                  ...getRoleColor(member.role)
-                }}>
-                  {member.role}
-                </span>
-                <span style={{
-                  ...styles.statusBadge,
-                  ...getStatusColor(member.status)
-                }}>
-                  {member.status}
-                </span>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* Invite Form */}
       {showInviteForm && (
-        <div style={styles.inviteForm}>
-          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: '600' }}>
+        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-6">
+          <h4 className="mb-4 mt-0 text-base font-semibold text-gray-900">
             Invite Team Member
           </h4>
           <form onSubmit={handleInviteMember}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Email Address</label>
+            <div className="mb-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Email Address
+              </label>
               <input
                 type="email"
-                style={styles.input}
+                className="input-field"
                 value={inviteForm.email}
-                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                onChange={(e) =>
+                  setInviteForm({ ...inviteForm, email: e.target.value })
+                }
                 required
               />
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Role</label>
+            <div className="mb-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">Role</label>
               <select
-                style={styles.select}
+                className="select-field"
                 value={inviteForm.role}
-                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isInvitableRole(value)) {
+                    setInviteForm({ ...inviteForm, role: value });
+                  }
+                }}
               >
                 <option value="recruiter">Recruiter</option>
                 <option value="admin">Admin</option>
                 <option value="viewer">Viewer</option>
               </select>
             </div>
-            <div style={styles.buttonGroup}>
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowInviteForm(false)}
-                style={{ ...styles.button, ...styles.cancelButton }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#f9fafb')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+                className="btn-secondary"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                style={{ ...styles.button, ...styles.submitButton }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
-              >
+              <button type="submit" className="btn-primary">
                 Send Invitation
               </button>
             </div>

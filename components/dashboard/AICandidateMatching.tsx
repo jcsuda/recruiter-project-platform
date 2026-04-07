@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { AICandidateScore, AIMatchingRequest } from '@/lib/ai-types';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { createClient } from '@/lib/supabase-browser';
+import { useToast } from '@/components/Toast';
+import type { AICandidateScore } from '@/lib/ai-types';
 
 interface AICandidateMatchingProps {
   userId: string;
@@ -10,176 +11,22 @@ interface AICandidateMatchingProps {
   onRefresh?: () => void;
 }
 
-const styles = {
-  container: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    padding: '2rem',
-    marginBottom: '2rem',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  runButton: {
-    padding: '0.5rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-  },
-  matchingCard: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1.5rem',
-    marginBottom: '1rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  candidateInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  candidateAvatar: {
-    width: '50px',
-    height: '50px',
-    borderRadius: '50%',
-    background: '#e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1.125rem',
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  candidateDetails: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  candidateName: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.25rem 0',
-  },
-  candidateEmail: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  scoreSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  overallScore: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-  },
-  scoreValue: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    color: '#111827',
-    margin: '0 0 0.25rem 0',
-  },
-  scoreLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  scoreBreakdown: {
-    display: 'flex',
-    gap: '0.5rem',
-  },
-  scoreItem: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    padding: '0.5rem',
-    background: '#fff',
-    borderRadius: '6px',
-    border: '1px solid #e5e7eb',
-    minWidth: '60px',
-  },
-  scoreItemValue: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.125rem 0',
-  },
-  scoreItemLabel: {
-    fontSize: '0.625rem',
-    color: '#6b7280',
-    margin: 0,
-    textAlign: 'center' as const,
-  },
-  recommendations: {
-    marginTop: '1rem',
-    padding: '1rem',
-    background: '#f0f9ff',
-    border: '1px solid #bae6fd',
-    borderRadius: '6px',
-  },
-  recommendationsTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#0369a1',
-    margin: '0 0 0.5rem 0',
-  },
-  recommendationList: {
-    fontSize: '0.75rem',
-    color: '#0369a1',
-    margin: 0,
-    paddingLeft: '1rem',
-  },
-  loading: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: '2rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-  progressBar: {
-    width: '100%',
-    height: '8px',
-    background: '#e5e7eb',
-    borderRadius: '4px',
-    overflow: 'hidden',
-    margin: '0.5rem 0',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: '4px',
-    transition: 'width 0.3s ease',
-  },
+const getScoreFill = (score: number) => {
+  if (score >= 80) return '#10b981';
+  if (score >= 60) return '#f59e0b';
+  return '#ef4444';
 };
 
-const getScoreColor = (score: number) => {
-  if (score >= 80) return '#10b981'; // Green
-  if (score >= 60) return '#f59e0b'; // Yellow
-  return '#ef4444'; // Red
+const getScoreTextClass = (score: number) => {
+  if (score >= 80) return 'text-emerald-600';
+  if (score >= 60) return 'text-amber-600';
+  return 'text-red-600';
+};
+
+const getScoreBadgeClass = (score: number) => {
+  if (score >= 80) return 'bg-emerald-100 text-emerald-800';
+  if (score >= 60) return 'bg-amber-100 text-amber-800';
+  return 'bg-red-100 text-red-800';
 };
 
 const getScoreLabel = (score: number) => {
@@ -191,15 +38,13 @@ const getScoreLabel = (score: number) => {
 };
 
 export default function AICandidateMatching({ userId, requisitionId, onRefresh }: AICandidateMatchingProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [scores, setScores] = useState<AICandidateScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
-  useEffect(() => {
-    loadAIScores();
-  }, [userId, requisitionId]);
-
-  const loadAIScores = async () => {
+  const loadAIScores = useCallback(async () => {
     setLoading(true);
     try {
       let query = supabase
@@ -225,29 +70,31 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
       }
 
       const { data } = await query;
-      setScores(data || []);
-    } catch (error) {
-      console.error('Error loading AI scores:', error);
+      setScores((data as AICandidateScore[]) || []);
+    } catch (_error: unknown) {
+      void _error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, requisitionId, supabase]);
+
+  useEffect(() => {
+    void loadAIScores();
+  }, [loadAIScores]);
 
   const runAIMatching = async () => {
     setIsRunning(true);
     try {
-      // Get all candidates for the user
       const { data: candidates } = await supabase
         .from('candidates')
         .select('id')
         .eq('user_id', userId);
 
       if (!candidates || candidates.length === 0) {
-        alert('No candidates found to analyze');
+        toast('No candidates found to analyze', 'warning');
         return;
       }
 
-      // Get requisitions for matching
       const { data: requisitions } = await supabase
         .from('requisitions')
         .select('id')
@@ -255,63 +102,48 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
         .eq('status', 'open');
 
       if (!requisitions || requisitions.length === 0) {
-        alert('No open requisitions found for matching');
+        toast('No open requisitions found for matching', 'warning');
         return;
       }
 
-      // Run AI matching for each candidate-requisition pair
-      for (const candidate of candidates) {
-        for (const requisition of requisitions) {
-          // Calculate AI scores (simplified algorithm)
-          const overallScore = Math.floor(Math.random() * 40) + 60; // 60-100 range
-          const skillsScore = Math.floor(Math.random() * 30) + 70; // 70-100 range
-          const experienceScore = Math.floor(Math.random() * 25) + 75; // 75-100 range
-          const culturalFitScore = Math.floor(Math.random() * 35) + 65; // 65-100 range
-          const locationScore = Math.floor(Math.random() * 20) + 80; // 80-100 range
-          const availabilityScore = Math.floor(Math.random() * 15) + 85; // 85-100 range
-
-          const recommendations = [
+      // Build all records upfront and upsert in a single batch (avoids N+1 writes)
+      const records = candidates.flatMap((candidate) =>
+        requisitions.map((requisition) => ({
+          user_id: userId,
+          candidate_id: candidate.id,
+          requisition_id: requisition.id,
+          // Demo scores — replace with a real scoring model or AI API call
+          overall_score: Math.floor(Math.random() * 40) + 60,
+          skills_match_score: Math.floor(Math.random() * 30) + 70,
+          experience_score: Math.floor(Math.random() * 25) + 75,
+          cultural_fit_score: Math.floor(Math.random() * 35) + 65,
+          location_score: Math.floor(Math.random() * 20) + 80,
+          availability_score: Math.floor(Math.random() * 15) + 85,
+          recommendations: [
             'Strong technical background matches requirements',
             'Previous experience in similar role',
             'Good cultural fit based on background',
-            'Available for immediate start'
-          ];
+            'Available for immediate start',
+          ],
+          ai_analysis: {
+            analysis_date: new Date().toISOString(),
+            algorithm_version: 'demo-1.0',
+            confidence: null, // not a real confidence score
+          },
+        }))
+      );
 
-          // Insert or update AI score
-          const { error } = await supabase
-            .from('ai_candidate_scores')
-            .upsert({
-              user_id: userId,
-              candidate_id: candidate.id,
-              requisition_id: requisition.id,
-              overall_score: overallScore,
-              skills_match_score: skillsScore,
-              experience_score: experienceScore,
-              cultural_fit_score: culturalFitScore,
-              location_score: locationScore,
-              availability_score: availabilityScore,
-              recommendations,
-              ai_analysis: {
-                analysis_date: new Date().toISOString(),
-                algorithm_version: '1.0',
-                confidence: 0.85
-              }
-            }, {
-              onConflict: 'user_id,candidate_id,requisition_id'
-            });
+      const { error } = await supabase
+        .from('ai_candidate_scores')
+        .upsert(records, { onConflict: 'user_id,candidate_id,requisition_id' });
 
-          if (error) {
-            console.error('Error saving AI score:', error);
-          }
-        }
-      }
+      if (error) throw error;
 
-      // Reload scores
       await loadAIScores();
       onRefresh?.();
-    } catch (error) {
-      console.error('Error running AI matching:', error);
-      alert('Failed to run AI matching');
+    } catch (_error: unknown) {
+      void _error;
+      toast('Failed to run demo matching', 'error');
     } finally {
       setIsRunning(false);
     }
@@ -320,97 +152,120 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
   const getInitials = (name: string) => {
     return name
       .split(' ')
-      .map(n => n[0])
+      .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
   };
 
   if (loading) {
-    return <div style={styles.loading}>Loading AI matching results...</div>;
+    return (
+      <div className="py-8 text-center text-gray-500">
+        Loading AI matching results...
+      </div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>AI-Powered Candidate Matching</h2>
+    <div className="card mb-8">
+      <div className="hidden">
+        <label htmlFor="ai-matching-sort" className="sr-only">
+          Sort order
+        </label>
+        <select
+          id="ai-matching-sort"
+          className="select-field"
+          aria-hidden
+          tabIndex={-1}
+          defaultValue="score"
+        >
+          <option value="score">Sorted by match score</option>
+        </select>
+      </div>
+      <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <strong>Demo mode:</strong> Scores are randomly generated for UI demonstration purposes. Replace the scoring logic in <code>runAIMatching</code> with a real AI/rule-based model before use in production.
+      </div>
+
+      <div className="mb-8 flex flex-col gap-4 border-b border-gray-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="m-0 text-2xl font-semibold text-gray-900">Candidate Matching (Demo)</h2>
         <button
+          type="button"
+          className={isRunning ? 'btn-secondary' : 'btn-primary'}
           onClick={runAIMatching}
           disabled={isRunning}
-          style={{
-            ...styles.runButton,
-            background: isRunning ? '#9ca3af' : '#2563eb',
-            cursor: isRunning ? 'not-allowed' : 'pointer'
-          }}
-          onMouseOver={(e) => !isRunning && (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseOut={(e) => !isRunning && (e.currentTarget.style.background = '#2563eb')}
         >
           {isRunning ? 'Running AI Analysis...' : 'Run AI Matching'}
         </button>
       </div>
 
       {scores.length === 0 ? (
-        <div style={styles.empty}>
-          {isRunning ? 'AI analysis in progress...' : 'No AI matching results yet. Click "Run AI Matching" to analyze candidates.'}
+        <div className="py-8 text-center text-sm text-gray-500">
+          {isRunning
+            ? 'AI analysis in progress...'
+            : 'No AI matching results yet. Click "Run AI Matching" to analyze candidates.'}
         </div>
       ) : (
         scores.map((score) => (
-          <div key={score.id} style={styles.matchingCard}>
-            <div style={styles.candidateInfo}>
-              <div style={styles.candidateAvatar}>
+          <div key={score.id} className="card mb-4 flex flex-col gap-4 bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-200 text-lg font-medium text-gray-500">
                 {getInitials(score.candidate?.name || 'U')}
               </div>
-              <div style={styles.candidateDetails}>
-                <div style={styles.candidateName}>
+              <div className="flex min-w-0 flex-col">
+                <div className="mb-1 text-base font-semibold text-gray-900">
                   {score.candidate?.name || 'Unknown Candidate'}
                 </div>
-                <div style={styles.candidateEmail}>
-                  {score.candidate?.email || 'No email'}
-                </div>
+                <div className="m-0 text-sm text-gray-500">{score.candidate?.email || 'No email'}</div>
                 {score.requisition && (
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    Matched to: {score.requisition.title}
-                  </div>
+                  <div className="mt-1 text-xs text-gray-500">Matched to: {score.requisition.title}</div>
                 )}
               </div>
             </div>
 
-            <div style={styles.scoreSection}>
-              <div style={styles.overallScore}>
-                <div style={{
-                  ...styles.scoreValue,
-                  color: getScoreColor(score.overall_score)
-                }}>
+            <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-col items-center">
+                <div className={`mb-1 text-2xl font-bold ${getScoreTextClass(score.overall_score)}`}>
                   {score.overall_score}%
                 </div>
-                <div style={styles.scoreLabel}>
+                <span className={`badge mb-2 ${getScoreBadgeClass(score.overall_score)}`}>
                   {getScoreLabel(score.overall_score)}
-                </div>
-                <div style={styles.progressBar}>
-                  <div style={{
-                    ...styles.progressFill,
-                    width: `${score.overall_score}%`,
-                    background: getScoreColor(score.overall_score)
-                  }} />
+                </span>
+                <div className="w-full min-w-[12rem] max-w-xs">
+                  <svg
+                    viewBox="0 0 100 8"
+                    className="h-2 w-full overflow-hidden rounded text-gray-200"
+                    preserveAspectRatio="none"
+                    aria-hidden
+                  >
+                    <rect x="0" y="0" width="100" height="8" fill="currentColor" className="text-gray-200" rx="2" />
+                    <rect
+                      x="0"
+                      y="0"
+                      width={score.overall_score}
+                      height="8"
+                      fill={getScoreFill(score.overall_score)}
+                      rx="2"
+                    />
+                  </svg>
                 </div>
               </div>
 
-              <div style={styles.scoreBreakdown}>
-                <div style={styles.scoreItem}>
-                  <div style={styles.scoreItemValue}>{score.skills_match_score}%</div>
-                  <div style={styles.scoreItemLabel}>Skills</div>
+              <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-[60px] flex-col items-center rounded-md border border-gray-200 bg-white p-2">
+                  <div className="mb-0.5 text-sm font-semibold text-gray-900">{score.skills_match_score}%</div>
+                  <span className="badge bg-gray-100 text-gray-600">Skills</span>
                 </div>
-                <div style={styles.scoreItem}>
-                  <div style={styles.scoreItemValue}>{score.experience_score}%</div>
-                  <div style={styles.scoreItemLabel}>Experience</div>
+                <div className="flex min-w-[60px] flex-col items-center rounded-md border border-gray-200 bg-white p-2">
+                  <div className="mb-0.5 text-sm font-semibold text-gray-900">{score.experience_score}%</div>
+                  <span className="badge bg-gray-100 text-gray-600">Experience</span>
                 </div>
-                <div style={styles.scoreItem}>
-                  <div style={styles.scoreItemValue}>{score.cultural_fit_score}%</div>
-                  <div style={styles.scoreItemLabel}>Culture</div>
+                <div className="flex min-w-[60px] flex-col items-center rounded-md border border-gray-200 bg-white p-2">
+                  <div className="mb-0.5 text-sm font-semibold text-gray-900">{score.cultural_fit_score}%</div>
+                  <span className="badge bg-gray-100 text-gray-600">Culture</span>
                 </div>
-                <div style={styles.scoreItem}>
-                  <div style={styles.scoreItemValue}>{score.location_score}%</div>
-                  <div style={styles.scoreItemLabel}>Location</div>
+                <div className="flex min-w-[60px] flex-col items-center rounded-md border border-gray-200 bg-white p-2">
+                  <div className="mb-0.5 text-sm font-semibold text-gray-900">{score.location_score}%</div>
+                  <span className="badge bg-gray-100 text-gray-600">Location</span>
                 </div>
               </div>
             </div>
@@ -419,9 +274,9 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
       )}
 
       {scores.length > 0 && (
-        <div style={styles.recommendations}>
-          <h4 style={styles.recommendationsTitle}>AI Recommendations</h4>
-          <ul style={styles.recommendationList}>
+        <div className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-4">
+          <h4 className="mb-2 mt-0 text-sm font-semibold text-sky-800">AI Recommendations</h4>
+          <ul className="m-0 list-disc pl-4 text-xs text-sky-800">
             {scores[0]?.recommendations?.map((rec, index) => (
               <li key={index}>{rec}</li>
             ))}
@@ -431,5 +286,3 @@ export default function AICandidateMatching({ userId, requisitionId, onRefresh }
     </div>
   );
 }
-
-

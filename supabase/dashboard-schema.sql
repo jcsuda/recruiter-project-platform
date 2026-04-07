@@ -21,7 +21,7 @@ create table public.requisitions (
 -- Pipeline stages
 create table public.pipeline_stages (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
+  name text not null unique,
   order_index int not null,
   created_at timestamptz default now()
 );

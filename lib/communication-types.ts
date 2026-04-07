@@ -72,22 +72,6 @@ export interface FollowUpFormData {
   priority: FollowUp['priority'];
 }
 
-export interface InterviewFormData {
-  title: string;
-  description?: string;
-  interview_type: Interview['interview_type'];
-  scheduled_at: string;
-  duration_minutes: number;
-  location?: string;
-  meeting_link?: string;
-  notes?: string;
-}
 
-export interface EmailTemplateFormData {
-  name: string;
-  subject: string;
-  body: string;
-  template_type: EmailTemplate['template_type'];
-}
 
 

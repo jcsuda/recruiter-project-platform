@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { EmailTemplate } from '@/lib/communication-types';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
+import type { EmailTemplate } from "@/lib/communication-types";
 
 interface EmailComposerProps {
   isOpen: boolean;
@@ -13,169 +14,6 @@ interface EmailComposerProps {
   onSuccess: () => void;
 }
 
-const styles = {
-  overlay: {
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1002,
-  },
-  modal: {
-    background: '#fff',
-    borderRadius: '12px',
-    padding: '2rem',
-    width: '90%',
-    maxWidth: '700px',
-    maxHeight: '90vh',
-    overflowY: 'auto' as const,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1.5rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: '1.5rem',
-    cursor: 'pointer',
-    color: '#6b7280',
-    padding: '0.25rem',
-    borderRadius: '4px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  input: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  textarea: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    minHeight: '120px',
-    fontFamily: 'inherit',
-  },
-  templateSection: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '1rem',
-    marginBottom: '1rem',
-  },
-  templateHeader: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '0.5rem',
-  },
-  templateSelect: {
-    width: '100%',
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    background: '#fff',
-  },
-  templatePreview: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '4px',
-    padding: '0.75rem',
-    marginTop: '0.5rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-    maxHeight: '150px',
-    overflowY: 'auto' as const,
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '1.5rem',
-    justifyContent: 'flex-end',
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-  },
-  cancelButton: {
-    background: '#fff',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-  },
-  sendButton: {
-    background: '#2563eb',
-    color: '#fff',
-  },
-  scheduleButton: {
-    background: '#10b981',
-    color: '#fff',
-  },
-  error: {
-    padding: '0.75rem',
-    background: '#fee2e2',
-    border: '1px solid #fca5a5',
-    borderRadius: '6px',
-    color: '#991b1b',
-    fontSize: '0.875rem',
-    marginBottom: '1rem',
-  },
-  success: {
-    padding: '0.75rem',
-    background: '#dcfce7',
-    border: '1px solid #86efac',
-    borderRadius: '6px',
-    color: '#166534',
-    fontSize: '0.875rem',
-    marginBottom: '1rem',
-  },
-  scheduleSection: {
-    background: '#fef3c7',
-    border: '1px solid #f59e0b',
-    borderRadius: '6px',
-    padding: '1rem',
-    marginTop: '1rem',
-  },
-  checkbox: {
-    marginRight: '0.5rem',
-  },
-};
-
 export default function EmailComposer({
   isOpen,
   onClose,
@@ -184,51 +22,41 @@ export default function EmailComposer({
   candidateEmail,
   onSuccess,
 }: EmailComposerProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [formData, setFormData] = useState({
-    subject: '',
-    content: '',
+    subject: "",
+    content: "",
     schedule: false,
-    scheduled_at: '',
+    scheduled_at: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    if (isOpen) {
-      loadTemplates();
-      setFormData({
-        subject: '',
-        content: '',
-        schedule: false,
-        scheduled_at: '',
-      });
-      setError('');
-      setSuccess('');
-    }
-  }, [isOpen]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if user has any templates
       const { data: existingTemplates } = await supabase
-        .from('email_templates')
-        .select('*')
-        .eq('user_id', user.id);
+        .from("email_templates")
+        .select("*")
+        .eq("user_id", user.id);
 
-      // If no templates exist, create default ones
-      if (!existingTemplates || existingTemplates.length === 0) {
-        const defaultTemplates = [
-          {
-            user_id: user.id,
-            name: 'Initial Contact',
-            subject: 'Exciting Opportunity at [Company Name]',
-            body: `Hi [Candidate Name],
+      // Seed default templates idempotently using ON CONFLICT so re-opening the
+      // modal never creates duplicates even if a prior query returned empty due
+      // to a transient error. Requires UNIQUE(user_id, template_type, is_default).
+      const defaultTemplates = [
+        {
+          user_id: user.id,
+          name: "Initial Contact",
+          subject: "Exciting Opportunity at [Company Name]",
+          body: `Hi [Candidate Name],
 
 I hope this message finds you well. I came across your profile and was impressed by your background in [Skill/Experience].
 
@@ -243,14 +71,14 @@ Would you be interested in learning more about this opportunity? I'd love to sch
 
 Best regards,
 [Your Name]`,
-            template_type: 'initial_contact',
-            is_default: true
-          },
-          {
-            user_id: user.id,
-            name: 'Interview Invite',
-            subject: 'Interview Invitation - [Position Title]',
-            body: `Hi [Candidate Name],
+          template_type: "initial_contact",
+          is_default: true,
+        },
+        {
+          user_id: user.id,
+          name: "Interview Invite",
+          subject: "Interview Invitation - [Position Title]",
+          body: `Hi [Candidate Name],
 
 Thank you for your interest in the [Position Title] position. We'd like to invite you for an interview.
 
@@ -267,14 +95,14 @@ Looking forward to speaking with you!
 
 Best regards,
 [Your Name]`,
-            template_type: 'interview_invite',
-            is_default: true
-          },
-          {
-            user_id: user.id,
-            name: 'Follow Up',
-            subject: 'Following up on [Position Title] opportunity',
-            body: `Hi [Candidate Name],
+          template_type: "interview_invite",
+          is_default: true,
+        },
+        {
+          user_id: user.id,
+          name: "Follow Up",
+          subject: "Following up on [Position Title] opportunity",
+          body: `Hi [Candidate Name],
 
 I wanted to follow up on our conversation about the [Position Title] opportunity.
 
@@ -284,36 +112,55 @@ Please let me know your availability for the coming week, and I'll send over som
 
 Best regards,
 [Your Name]`,
-            template_type: 'follow_up',
-            is_default: true
-          }
-        ];
+          template_type: "follow_up",
+          is_default: true,
+        },
+      ];
 
-        await supabase
-          .from('email_templates')
-          .insert(defaultTemplates);
-      }
+      await supabase
+        .from("email_templates")
+        .upsert(defaultTemplates, {
+          onConflict: "user_id,template_type,is_default",
+          ignoreDuplicates: true,
+        });
 
-      // Load templates
       const { data } = await supabase
-        .from('email_templates')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
+        .from("email_templates")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name");
       setTemplates(data || []);
-    } catch (error) {
-      console.error('Error loading templates:', error);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to load email templates.";
+      toast(message, "error");
     }
-  };
+  }, [supabase, toast]);
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadTemplates();
+      setFormData({
+        subject: "",
+        content: "",
+        schedule: false,
+        scheduled_at: "",
+      });
+      setError("");
+      setSuccess("");
+    }
+  }, [isOpen, loadTemplates]);
 
   const handleTemplateSelect = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
+    const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         subject: template.subject,
         content: template.body,
-      });
+      }));
     }
     setSelectedTemplate(templateId);
   };
@@ -321,37 +168,51 @@ Best regards,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
 
       const { error: insertError } = await supabase
-        .from('communications')
+        .from("communications")
         .insert({
           user_id: user.id,
           candidate_id: candidateId,
-          type: 'email',
+          type: "email",
           subject: formData.subject,
           content: formData.content,
-          direction: 'outbound',
-          status: formData.schedule ? 'scheduled' : 'sent',
+          direction: "outbound",
+          status: formData.schedule ? "scheduled" : "sent",
           scheduled_at: formData.schedule ? formData.scheduled_at : null,
           sent_at: formData.schedule ? null : new Date().toISOString(),
         });
 
       if (insertError) throw insertError;
 
-      setSuccess(formData.schedule ? 'Email scheduled successfully!' : 'Email sent successfully!');
+      setSuccess(
+        formData.schedule
+          ? "Communication scheduled and logged."
+          : "Communication logged successfully. Note: actual email delivery requires an email service integration."
+      );
       setTimeout(() => {
         onSuccess();
         onClose();
       }, 1500);
-    } catch (err) {
-      console.error('Error sending email:', err);
-      setError('Failed to send email. Please try again.');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to send email. Please try again.";
+      toast(message, "error");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to send email. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -360,32 +221,62 @@ Best regards,
   if (!isOpen) return null;
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>Send Email to {candidateName}</h2>
+    <div
+      className="fixed inset-0 z-[1002] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="card relative w-[90%] max-w-[700px] max-h-[90vh] overflow-y-auto p-8 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="email-composer-title"
+      >
+        <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
+          <h2
+            id="email-composer-title"
+            className="m-0 text-xl font-semibold text-gray-900"
+          >
+            Log Communication — {candidateName}
+          </h2>
           <button
-            style={styles.closeButton}
+            type="button"
             onClick={onClose}
-            onMouseOver={(e) => (e.currentTarget.style.background = '#f3f4f6')}
-            onMouseOut={(e) => (e.currentTarget.style.background = 'none')}
+            className="cursor-pointer rounded p-1 text-2xl leading-none text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
+        {error && (
+          <div
+            className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+        {success && (
+          <div
+            className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-3 text-sm text-green-800"
+            role="status"
+          >
+            {success}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* Email Templates */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {templates.length > 0 && (
-            <div style={styles.templateSection}>
-              <div style={styles.templateHeader}>Use Email Template</div>
+            <div className="card mb-4 bg-gray-50 p-4">
+              <div className="mb-2 text-sm font-semibold text-gray-900">
+                Use Email Template
+              </div>
               <select
-                style={styles.templateSelect}
+                className="select-field"
                 value={selectedTemplate}
                 onChange={(e) => handleTemplateSelect(e.target.value)}
+                aria-label="Email template"
               >
                 <option value="">Select a template...</option>
                 {templates.map((template) => (
@@ -395,100 +286,125 @@ Best regards,
                 ))}
               </select>
               {selectedTemplate && (
-                <div style={styles.templatePreview}>
-                  <strong>Preview:</strong><br />
-                  {templates.find(t => t.id === selectedTemplate)?.body.substring(0, 200)}...
+                <div className="card mt-2 max-h-[150px] overflow-y-auto p-3 text-sm text-gray-700">
+                  <strong>Preview:</strong>
+                  <br />
+                  {templates
+                    .find((t) => t.id === selectedTemplate)
+                    ?.body.substring(0, 200)}
+                  ...
                 </div>
               )}
             </div>
           )}
 
-          {/* Email Form */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>To</label>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="email-composer-to"
+              className="text-sm font-medium text-gray-700"
+            >
+              To
+            </label>
             <input
+              id="email-composer-to"
               type="email"
-              style={styles.input}
+              className="input-field opacity-70"
               value={candidateEmail}
               disabled
+              readOnly
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Subject *</label>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="email-composer-subject"
+              className="text-sm font-medium text-gray-700"
+            >
+              Subject *
+            </label>
             <input
+              id="email-composer-subject"
               type="text"
-              style={styles.input}
+              className="input-field"
               value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, subject: e.target.value }))
+              }
               required
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Message *</label>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="email-composer-message"
+              className="text-sm font-medium text-gray-700"
+            >
+              Message *
+            </label>
             <textarea
-              style={styles.textarea}
+              id="email-composer-message"
+              className="input-field min-h-[120px] resize-y font-[inherit]"
               value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, content: e.target.value }))
+              }
               placeholder="Write your message here..."
               required
             />
           </div>
 
-          {/* Schedule Email */}
-          <div style={styles.scheduleSection}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <div className="card mt-4 border-amber-500 bg-amber-50 p-4">
+            <label className="flex cursor-pointer items-center text-sm text-gray-800">
               <input
                 type="checkbox"
-                style={styles.checkbox}
+                className="mr-2 rounded border-gray-300"
                 checked={formData.schedule}
-                onChange={(e) => setFormData({ ...formData, schedule: e.target.checked })}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    schedule: e.target.checked,
+                  }))
+                }
               />
               Schedule this email for later
             </label>
             {formData.schedule && (
-              <div style={{ marginTop: '0.5rem' }}>
+              <div className="mt-2">
                 <input
                   type="datetime-local"
-                  style={styles.input}
+                  className="input-field"
                   value={formData.scheduled_at}
-                  onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      scheduled_at: e.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
             )}
           </div>
 
-          <div style={styles.buttonGroup}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{ ...styles.button, ...styles.cancelButton }}
-              onMouseOver={(e) => (e.currentTarget.style.background = '#f9fafb')}
-              onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
-            >
+          <div className="mt-6 flex justify-end gap-4">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
             {formData.schedule ? (
               <button
                 type="submit"
                 disabled={loading}
-                style={{ ...styles.button, ...styles.scheduleButton }}
-                onMouseOver={(e) => !loading && (e.currentTarget.style.background = '#059669')}
-                onMouseOut={(e) => !loading && (e.currentTarget.style.background = '#10b981')}
+                className="btn-success"
               >
-                {loading ? 'Scheduling...' : 'Schedule Email'}
+                {loading ? "Scheduling..." : "Schedule Email"}
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={loading}
-                style={{ ...styles.button, ...styles.sendButton }}
-                onMouseOver={(e) => !loading && (e.currentTarget.style.background = '#1d4ed8')}
-                onMouseOut={(e) => !loading && (e.currentTarget.style.background = '#2563eb')}
+                className="btn-primary"
               >
-                {loading ? 'Sending...' : 'Send Email'}
+                {loading ? "Sending..." : "Send Email"}
               </button>
             )}
           </div>

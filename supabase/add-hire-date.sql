@@ -8,3 +8,4 @@ COMMENT ON COLUMN public.requisitions.hire_date IS 'The actual date when the pos
 
 
 
+

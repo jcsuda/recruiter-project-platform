@@ -1,166 +1,90 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import { SearchParams, SourceKey, SearchEngine, EducationLevel, OpenToWorkStatus } from '@/lib/types';
-import { SOURCE_LIST } from '@/lib/sources';
-import { generateBooleanQuery, parseArrayInput } from '@/lib/builder';
-import { supabase } from '@/lib/supabase';
-import QueryPreview from './QueryPreview';
-import SavedSearches from './SavedSearches';
-
-const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '2rem 1.5rem',
-  },
-  tabsContainer: {
-    borderBottom: '1px solid #e5e7eb',
-    marginBottom: '2rem',
-    overflowX: 'auto' as const,
-  },
-  tabsNav: {
-    display: 'flex',
-    gap: '0.25rem',
-  },
-  tab: {
-    padding: '0.75rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    whiteSpace: 'nowrap' as const,
-    background: 'none',
-    borderTop: 'none',
-    borderLeft: 'none',
-    borderRight: 'none',
-    borderBottom: '2px solid transparent',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    color: '#6b7280',
-  },
-  activeTab: {
-    padding: '0.75rem 1rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    whiteSpace: 'nowrap' as const,
-    background: 'none',
-    borderTop: 'none',
-    borderLeft: 'none',
-    borderRight: 'none',
-    borderBottom: '2px solid #2563eb',
-    color: '#2563eb',
-    cursor: 'pointer',
-  },
-  formCard: {
-    background: '#fff',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    padding: '1.5rem',
-    marginBottom: '1.5rem',
-  },
-  formGroup: {
-    marginBottom: '1rem',
-  },
-  label: {
-    display: 'block',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: '0.25rem',
-  },
-  input: {
-    width: '100%',
-    padding: '0.5rem 0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    boxSizing: 'border-box' as const,
-  },
-  select: {
-    width: '100%',
-    padding: '0.5rem 0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    boxSizing: 'border-box' as const,
-    background: '#fff',
-  },
-  helpText: {
-    marginTop: '0.25rem',
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-};
+import { useState, useMemo, useEffect } from "react";
+import {
+  SearchParams,
+  SourceKey,
+  SearchEngine,
+  EducationLevel,
+  OpenToWorkStatus,
+} from "@/lib/types";
+import { SOURCE_LIST } from "@/lib/sources";
+import { generateBooleanQuery, parseArrayInput } from "@/lib/builder";
+import { createClient } from "@/lib/supabase-browser";
+import type { User } from "@supabase/supabase-js";
+import QueryPreview from "./QueryPreview";
+import SavedSearches from "./SavedSearches";
+import { useToast } from "./Toast";
 
 export default function SearchBuilder() {
-  const [activeSource, setActiveSource] = useState<SourceKey>('linkedin');
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
+  const supabase = createClient();
+  const { toast } = useToast();
+
+  const [activeSource, setActiveSource] = useState<SourceKey>("linkedin");
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>("google");
   const [params, setParams] = useState<SearchParams>({
-    role: '',
+    role: "",
     include: [],
     exclude: [],
-    location: '',
+    location: "",
     education: undefined,
-    employer: '',
+    employer: "",
     openToWork: undefined,
   });
 
-  const [includeInput, setIncludeInput] = useState('');
-  const [excludeInput, setExcludeInput] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [includeInput, setIncludeInput] = useState("");
+  const [excludeInput, setExcludeInput] = useState("");
+  const [user, setUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState("");
+  const [showSaveInput, setShowSaveInput] = useState(false);
 
   useEffect(() => {
-    checkUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
-    } catch (error) {
-      console.error('Error checking user:', error);
-    }
-  };
+    };
+    getUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
 
   const handleSaveSearch = async () => {
     if (!user) {
-      alert('Please sign in to save searches');
+      toast("Please sign in to save searches", "warning");
       return;
     }
 
-    const title = prompt('Enter a name for this search:');
-    if (!title) return;
+    if (!saveSearchName.trim()) {
+      toast("Please enter a name for this search", "warning");
+      return;
+    }
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('saved_searches')
-        .insert({
-          user_id: user.id,
-          source_key: activeSource,
-          title,
-          params: {
-            ...params,
-            includeInput,
-            excludeInput,
-          },
-        });
+      const { error } = await supabase.from("saved_searches").insert({
+        user_id: user.id,
+        source_key: activeSource,
+        title: saveSearchName.trim(),
+        params: { ...params, includeInput, excludeInput },
+      });
 
       if (error) throw error;
-      alert('Search saved successfully!');
-    } catch (error: any) {
-      console.error('Error saving search:', error);
-      alert(error.message || 'Failed to save search');
+      toast("Search saved successfully!", "success");
+      setSaveSearchName("");
+      setShowSaveInput(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save search";
+      toast(message, "error");
     } finally {
       setSaving(false);
     }
@@ -169,42 +93,50 @@ export default function SearchBuilder() {
   const query = useMemo(() => {
     try {
       return generateBooleanQuery(activeSource, params, searchEngine);
-    } catch (error) {
-      console.error('Error generating query:', error);
-      return { raw: '', encoded: '', url: '' };
+    } catch {
+      return { raw: "", encoded: "", url: "" };
     }
   }, [activeSource, params, searchEngine]);
 
   const handleIncludeChange = (value: string) => {
     setIncludeInput(value);
-    setParams(prev => ({ ...prev, include: parseArrayInput(value) }));
+    setParams((prev) => ({ ...prev, include: parseArrayInput(value) }));
   };
 
   const handleExcludeChange = (value: string) => {
     setExcludeInput(value);
-    setParams(prev => ({ ...prev, exclude: parseArrayInput(value) }));
+    setParams((prev) => ({ ...prev, exclude: parseArrayInput(value) }));
   };
 
-  const handleLoadSearch = (sourceKey: SourceKey, searchParams: SearchParams, includeStr: string, excludeStr: string) => {
+  const handleLoadSearch = (
+    sourceKey: SourceKey,
+    searchParams: SearchParams,
+    includeStr: string,
+    excludeStr: string
+  ) => {
     setActiveSource(sourceKey);
     setParams(searchParams);
     setIncludeInput(includeStr);
     setExcludeInput(excludeStr);
   };
 
-  const isLinkedIn = activeSource === 'linkedin';
-  const isStackOverflow = activeSource === 'stackoverflow';
+  const isLinkedIn = activeSource === "linkedin";
+  const isStackOverflow = activeSource === "stackoverflow";
 
   return (
-    <div style={styles.container}>
+    <div>
       {/* Source Tabs */}
-      <div style={styles.tabsContainer}>
-        <div style={styles.tabsNav}>
+      <div className="mb-6 overflow-x-auto border-b border-gray-200">
+        <div className="flex gap-1">
           {SOURCE_LIST.map((source) => (
             <button
               key={source.key}
               onClick={() => setActiveSource(source.key)}
-              style={activeSource === source.key ? styles.activeTab : styles.tab}
+              className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                activeSource === source.key
+                  ? "border-brand-600 text-brand-600"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
             >
               {source.label}
             </button>
@@ -213,31 +145,35 @@ export default function SearchBuilder() {
       </div>
 
       {/* Form */}
-      <div style={styles.formCard}>
-        {/* Role/Title */}
-        <div style={styles.formGroup}>
-          <label htmlFor="role" style={styles.label}>
-            {isStackOverflow ? 'Search Query' : 'Role/Title'}
+      <div className="card mb-6">
+        <div className="mb-4">
+          <label htmlFor="role" className="mb-1 block text-sm font-medium text-gray-700">
+            {isStackOverflow ? "Search Query" : "Role/Title"}
           </label>
           <input
             id="role"
             type="text"
-            value={params.role || ''}
-            onChange={(e) => setParams(prev => ({ ...prev, role: e.target.value }))}
-            placeholder={isStackOverflow ? "e.g., javascript async await" : "e.g., Software Engineer, Product Manager"}
-            style={styles.input}
+            value={params.role || ""}
+            onChange={(e) =>
+              setParams((prev) => ({ ...prev, role: e.target.value }))
+            }
+            placeholder={
+              isStackOverflow
+                ? "e.g., javascript async await"
+                : "e.g., Software Engineer, Product Manager"
+            }
+            className="input-field"
           />
           {isStackOverflow && (
-            <p style={styles.helpText}>
+            <p className="mt-1 text-xs text-gray-500">
               Search for questions, tags, or topics on Stack Overflow
             </p>
           )}
         </div>
 
-        {/* Include - Hidden for Stack Overflow */}
         {!isStackOverflow && (
-          <div style={styles.formGroup}>
-            <label htmlFor="include" style={styles.label}>
+          <div className="mb-4">
+            <label htmlFor="include" className="mb-1 block text-sm font-medium text-gray-700">
               Include (comma-separated)
             </label>
             <input
@@ -246,17 +182,16 @@ export default function SearchBuilder() {
               value={includeInput}
               onChange={(e) => handleIncludeChange(e.target.value)}
               placeholder="e.g., React, TypeScript, Node.js"
-              style={styles.input}
+              className="input-field"
             />
-            <p style={styles.helpText}>
+            <p className="mt-1 text-xs text-gray-500">
               Skills or keywords to include (combined with AND)
             </p>
           </div>
         )}
 
-        {/* Exclude */}
-        <div style={styles.formGroup}>
-          <label htmlFor="exclude" style={styles.label}>
+        <div className="mb-4">
+          <label htmlFor="exclude" className="mb-1 block text-sm font-medium text-gray-700">
             Exclude (comma-separated)
           </label>
           <input
@@ -265,45 +200,48 @@ export default function SearchBuilder() {
             value={excludeInput}
             onChange={(e) => handleExcludeChange(e.target.value)}
             placeholder="e.g., recruiter, HR"
-            style={styles.input}
+            className="input-field"
           />
-          <p style={styles.helpText}>
+          <p className="mt-1 text-xs text-gray-500">
             Keywords to exclude from results
           </p>
         </div>
 
-        {/* Location - Hidden for Stack Overflow */}
         {!isStackOverflow && (
-          <div style={styles.formGroup}>
-            <label htmlFor="location" style={styles.label}>
+          <div className="mb-4">
+            <label htmlFor="location" className="mb-1 block text-sm font-medium text-gray-700">
               Location
             </label>
             <input
               id="location"
               type="text"
-              value={params.location || ''}
-              onChange={(e) => setParams(prev => ({ ...prev, location: e.target.value }))}
+              value={params.location || ""}
+              onChange={(e) =>
+                setParams((prev) => ({ ...prev, location: e.target.value }))
+              }
               placeholder="e.g., Austin, San Francisco, Remote"
-              style={styles.input}
+              className="input-field"
             />
           </div>
         )}
 
-        {/* LinkedIn-specific fields */}
         {isLinkedIn && (
           <>
-            <div style={styles.formGroup}>
-              <label htmlFor="education" style={styles.label}>
+            <div className="mb-4">
+              <label htmlFor="education" className="mb-1 block text-sm font-medium text-gray-700">
                 Education
               </label>
               <select
                 id="education"
-                value={params.education || ''}
-                onChange={(e) => setParams(prev => ({ 
-                  ...prev, 
-                  education: e.target.value as EducationLevel || undefined 
-                }))}
-                style={styles.select}
+                value={params.education || ""}
+                onChange={(e) =>
+                  setParams((prev) => ({
+                    ...prev,
+                    education:
+                      (e.target.value as EducationLevel) || undefined,
+                  }))
+                }
+                className="select-field"
               >
                 <option value="">—</option>
                 <option value="bachelors">Bachelors</option>
@@ -312,70 +250,86 @@ export default function SearchBuilder() {
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label htmlFor="employer" style={styles.label}>
+            <div className="mb-4">
+              <label htmlFor="employer" className="mb-1 block text-sm font-medium text-gray-700">
                 Current Employer
               </label>
               <input
                 id="employer"
                 type="text"
-                value={params.employer || ''}
-                onChange={(e) => setParams(prev => ({ ...prev, employer: e.target.value }))}
+                value={params.employer || ""}
+                onChange={(e) =>
+                  setParams((prev) => ({
+                    ...prev,
+                    employer: e.target.value,
+                  }))
+                }
                 placeholder="e.g., Google, Microsoft"
-                style={styles.input}
+                className="input-field"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label htmlFor="openToWork" style={styles.label}>
+            <div className="mb-4">
+              <label htmlFor="openToWork" className="mb-1 block text-sm font-medium text-gray-700">
                 LinkedIn Status
               </label>
               <select
                 id="openToWork"
-                value={params.openToWork || ''}
-                onChange={(e) => setParams(prev => ({ 
-                  ...prev, 
-                  openToWork: e.target.value as OpenToWorkStatus || undefined 
-                }))}
-                style={styles.select}
+                value={params.openToWork || ""}
+                onChange={(e) =>
+                  setParams((prev) => ({
+                    ...prev,
+                    openToWork:
+                      (e.target.value as OpenToWorkStatus) || undefined,
+                  }))
+                }
+                className="select-field"
               >
                 <option value="">—</option>
-                <option value="opentowork">#OpenToWork (Seeking opportunities)</option>
+                <option value="opentowork">
+                  #OpenToWork (Seeking opportunities)
+                </option>
                 <option value="hiring">#Hiring (Actively hiring)</option>
               </select>
-              <p style={styles.helpText}>
+              <p className="mt-1 text-xs text-gray-500">
                 Filter by LinkedIn status hashtags
               </p>
             </div>
           </>
         )}
 
-        {/* Search Engine */}
-        <div style={styles.formGroup}>
-          <label htmlFor="engine" style={styles.label}>
+        <div className="mb-0">
+          <label htmlFor="engine" className="mb-1 block text-sm font-medium text-gray-700">
             Search Engine
           </label>
           <select
             id="engine"
             value={searchEngine}
-            onChange={(e) => setSearchEngine(e.target.value as SearchEngine)}
-            style={styles.select}
+            onChange={(e) =>
+              setSearchEngine(e.target.value as SearchEngine)
+            }
+            className="select-field"
           >
             <option value="google">Google</option>
             <option value="bing">Bing</option>
-            {activeSource === 'twitter' && <option value="twitter">Twitter</option>}
+            {activeSource === "twitter" && (
+              <option value="twitter">Twitter</option>
+            )}
           </select>
         </div>
-
       </div>
 
       {/* Query Preview */}
-      <QueryPreview 
-        query={query} 
+      <QueryPreview
+        query={query}
         searchEngine={searchEngine}
         user={user}
-        onSave={handleSaveSearch}
         saving={saving}
+        showSaveInput={showSaveInput}
+        saveSearchName={saveSearchName}
+        onSaveSearchNameChange={setSaveSearchName}
+        onToggleSaveInput={() => setShowSaveInput(!showSaveInput)}
+        onSave={handleSaveSearch}
       />
 
       {/* Saved Searches */}

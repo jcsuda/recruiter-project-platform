@@ -1,8 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { CandidateAssignment, AssignmentFormData, TeamMember } from '@/lib/team-types';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
+import type {
+  CandidateAssignment as CandidateAssignmentRow,
+  AssignmentFormData,
+  TeamMember,
+} from "@/lib/team-types";
 
 interface CandidateAssignmentProps {
   candidateId: string;
@@ -10,175 +15,65 @@ interface CandidateAssignmentProps {
   onRefresh?: () => void;
 }
 
-const styles = {
-  container: {
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    marginTop: '1rem',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  title: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  addButton: {
-    padding: '0.25rem 0.75rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    background: '#2563eb',
-    color: '#fff',
-    border: 'none',
-  },
-  assignmentCard: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '0.75rem',
-    marginBottom: '0.5rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  assignmentInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  assignmentDetails: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  assigneeName: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#111827',
-    margin: '0 0 0.25rem 0',
-  },
-  assignmentType: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  typeBadge: {
-    padding: '0.125rem 0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    borderRadius: '12px',
-    textTransform: 'uppercase' as const,
-  },
-  form: {
-    background: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
-    padding: '1rem',
-    marginTop: '0.5rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-    marginBottom: '1rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  select: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    background: '#fff',
-  },
-  textarea: {
-    padding: '0.5rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    minHeight: '60px',
-    fontFamily: 'inherit',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '0.5rem',
-    justifyContent: 'flex-end',
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    border: 'none',
-  },
-  cancelButton: {
-    background: '#fff',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-  },
-  submitButton: {
-    background: '#2563eb',
-    color: '#fff',
-  },
-  loading: {
-    textAlign: 'center' as const,
-    padding: '1rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: '1rem',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-  },
-};
+function userDisplayName(
+  user:
+    | { email?: string | null; full_name?: string | null }
+    | undefined
+    | null
+): string | undefined {
+  if (!user) return undefined;
+  const u = user as {
+    email?: string | null;
+    full_name?: string | null;
+    raw_user_meta_data?: { full_name?: string | null };
+  };
+  return (
+    u.raw_user_meta_data?.full_name ||
+    u.full_name ||
+    u.email ||
+    undefined
+  );
+}
 
-const getTypeColor = (type: string) => {
+function getTypeBadgeClass(type: string): string {
   switch (type) {
-    case 'primary': return { background: '#dbeafe', color: '#1e40af' };
-    case 'secondary': return { background: '#f3e8ff', color: '#7c3aed' };
-    case 'reviewer': return { background: '#fef3c7', color: '#92400e' };
-    case 'interviewer': return { background: '#dcfce7', color: '#166534' };
-    default: return { background: '#f3f4f6', color: '#374151' };
+    case "primary":
+      return "bg-blue-100 text-blue-800";
+    case "secondary":
+      return "bg-purple-100 text-purple-800";
+    case "reviewer":
+      return "bg-amber-100 text-amber-800";
+    case "interviewer":
+      return "bg-emerald-100 text-emerald-800";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
-};
+}
 
-export default function CandidateAssignment({ candidateId, candidateName, onRefresh }: CandidateAssignmentProps) {
-  const [assignments, setAssignments] = useState<CandidateAssignment[]>([]);
+export default function CandidateAssignment({
+  candidateId,
+  onRefresh,
+}: CandidateAssignmentProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
+  const [assignments, setAssignments] = useState<CandidateAssignmentRow[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<AssignmentFormData>({
     candidate_id: candidateId,
-    assigned_to: '',
-    assignment_type: 'primary',
-    notes: '',
+    assigned_to: "",
+    assignment_type: "primary",
+    notes: "",
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [candidateId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Load assignments for this candidate
       const { data: assignmentData } = await supabase
-        .from('candidate_assignments')
-        .select(`
+        .from("candidate_assignments")
+        .select(
+          `
           *,
           assigned_to_user:assigned_to (
             id,
@@ -190,159 +85,175 @@ export default function CandidateAssignment({ candidateId, candidateName, onRefr
             email,
             raw_user_meta_data
           )
-        `)
-        .eq('candidate_id', candidateId);
+        `
+        )
+        .eq("candidate_id", candidateId);
 
       setAssignments(assignmentData || []);
 
-      // Load team members for assignment dropdown
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: teamData } = await supabase
-          .from('teams')
-          .select('id')
-          .eq('owner_id', user.id)
+          .from("teams")
+          .select("id")
+          .eq("owner_id", user.id)
           .single();
 
         if (teamData) {
           const { data: membersData } = await supabase
-            .from('team_members')
-            .select(`
+            .from("team_members")
+            .select(
+              `
               *,
               user:user_id (
                 id,
                 email,
                 raw_user_meta_data
               )
-            `)
-            .eq('team_id', teamData.id)
-            .eq('status', 'active');
+            `
+            )
+            .eq("team_id", teamData.id)
+            .eq("status", "active");
 
           setTeamMembers(membersData || []);
         }
       }
-    } catch (error) {
-      console.error('Error loading assignment data:', error);
+    } catch {
+      // Silently fail — data will remain empty
     } finally {
       setLoading(false);
     }
-  };
+  }, [candidateId, supabase]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
-        .from('candidate_assignments')
-        .insert({
-          ...formData,
-          assigned_by: user.id,
-        });
+      const { error } = await supabase.from("candidate_assignments").insert({
+        ...formData,
+        assigned_by: user.id,
+      });
 
       if (error) throw error;
 
       setShowForm(false);
       setFormData({
         candidate_id: candidateId,
-        assigned_to: '',
-        assignment_type: 'primary',
-        notes: '',
+        assigned_to: "",
+        assignment_type: "primary",
+        notes: "",
       });
       loadData();
       onRefresh?.();
-    } catch (error) {
-      console.error('Error creating assignment:', error);
-      alert('Failed to create assignment');
+    } catch {
+      toast("Failed to create assignment", "error");
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   if (loading) {
-    return <div style={styles.loading}>Loading assignments...</div>;
+    return (
+      <div className="py-4 text-center text-sm text-gray-500">
+        Loading assignments...
+      </div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h4 style={styles.title}>Team Assignments</h4>
+    <div className="card mt-4 border-gray-200 bg-gray-50 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h4 className="m-0 text-base font-semibold text-gray-900">
+          Team Assignments
+        </h4>
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
-          style={styles.addButton}
-          onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-          onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
+          className="btn-primary px-3 py-1 text-xs"
         >
           + Assign
         </button>
       </div>
 
-      {/* Current Assignments */}
       {assignments.length === 0 ? (
-        <div style={styles.empty}>No assignments yet</div>
+        <div className="py-4 text-center text-sm text-gray-500">
+          No assignments yet
+        </div>
       ) : (
         assignments.map((assignment) => (
-          <div key={assignment.id} style={styles.assignmentCard}>
-            <div style={styles.assignmentInfo}>
-              <div style={styles.assignmentDetails}>
-                <div style={styles.assigneeName}>
-                  {assignment.assigned_to_user?.raw_user_meta_data?.full_name || assignment.assigned_to_user?.email}
+          <div
+            key={assignment.id}
+            className="card mb-2 flex items-center justify-between p-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col">
+                <div className="mb-1 text-sm font-medium text-gray-900">
+                  {userDisplayName(assignment.assigned_to_user)}
                 </div>
-                <div style={styles.assignmentType}>
-                  Assigned by {assignment.assigned_by_user?.raw_user_meta_data?.full_name || assignment.assigned_by_user?.email}
+                <div className="m-0 text-xs text-gray-500">
+                  Assigned by {userDisplayName(assignment.assigned_by_user)}
                 </div>
                 {assignment.notes && (
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <div className="mt-1 text-xs text-gray-500">
                     {assignment.notes}
                   </div>
                 )}
               </div>
             </div>
-            <span style={{
-              ...styles.typeBadge,
-              ...getTypeColor(assignment.assignment_type)
-            }}>
+            <span
+              className={`badge uppercase ${getTypeBadgeClass(assignment.assignment_type)}`}
+            >
               {assignment.assignment_type}
             </span>
           </div>
         ))
       )}
 
-      {/* Assignment Form */}
       {showForm && (
-        <div style={styles.form}>
+        <div className="card mt-2 p-4">
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Assign To</label>
+            <div className="mb-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Assign To
+              </label>
               <select
-                style={styles.select}
+                className="select-field"
                 value={formData.assigned_to}
-                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, assigned_to: e.target.value })
+                }
                 required
               >
                 <option value="">Select team member...</option>
                 {teamMembers.map((member) => (
                   <option key={member.user_id} value={member.user_id}>
-                    {member.user?.raw_user_meta_data?.full_name || member.user?.email}
+                    {userDisplayName(member.user)}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Assignment Type</label>
+            <div className="mb-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Assignment Type
+              </label>
               <select
-                style={styles.select}
+                className="select-field"
                 value={formData.assignment_type}
-                onChange={(e) => setFormData({ ...formData, assignment_type: e.target.value as any })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    assignment_type: e.target.value as AssignmentFormData["assignment_type"],
+                  })
+                }
               >
                 <option value="primary">Primary</option>
                 <option value="secondary">Secondary</option>
@@ -351,32 +262,29 @@ export default function CandidateAssignment({ candidateId, candidateName, onRefr
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Notes (Optional)</label>
+            <div className="mb-4 flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Notes (Optional)
+              </label>
               <textarea
-                style={styles.textarea}
+                className="input-field min-h-[60px] font-[inherit]"
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 placeholder="Add any notes about this assignment..."
               />
             </div>
 
-            <div style={styles.buttonGroup}>
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                style={{ ...styles.button, ...styles.cancelButton }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#f9fafb')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#fff')}
+                className="btn-secondary"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                style={{ ...styles.button, ...styles.submitButton }}
-                onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
-                onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
-              >
+              <button type="submit" className="btn-primary">
                 Assign
               </button>
             </div>
@@ -386,5 +294,3 @@ export default function CandidateAssignment({ candidateId, candidateName, onRefr
     </div>
   );
 }
-
-

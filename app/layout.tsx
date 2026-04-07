@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HIRELab",
-  description: "Generate precise Boolean search strings for talent sourcing across LinkedIn, GitHub, Stack Overflow, and more.",
+  title: {
+    default: "HIRELab",
+    template: "%s | HIRELab",
+  },
+  description:
+    "Generate precise Boolean search strings for talent sourcing across LinkedIn, GitHub, Stack Overflow, and more.",
 };
 
 export default function RootLayout({
@@ -12,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0, fontFamily: 'Arial, sans-serif', background: '#f5f5f5' }}>
+      <body className="min-h-screen bg-gray-100 font-sans antialiased">
         {children}
       </body>
     </html>

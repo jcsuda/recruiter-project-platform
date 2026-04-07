@@ -21,6 +21,7 @@ create table public.source_analytics (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   source_name text not null,
+  unique (user_id, source_name),
   total_candidates integer default 0,
   contacted_candidates integer default 0,
   interviewed_candidates integer default 0,
