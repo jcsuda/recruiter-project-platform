@@ -1,11 +1,13 @@
 "use client";
 
-import { BooleanQuery, SearchEngine } from "@/lib/types";
+import { BooleanQuery, SearchEngine, SourceKey } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
+import SearchRefinements from "./SearchRefinements";
 
 interface QueryPreviewProps {
   query: BooleanQuery;
   searchEngine: SearchEngine;
+  activeSource: SourceKey;
   user?: User | null;
   saving?: boolean;
   showSaveInput?: boolean;
@@ -13,11 +15,13 @@ interface QueryPreviewProps {
   onSaveSearchNameChange?: (name: string) => void;
   onToggleSaveInput?: () => void;
   onSave?: () => void;
+  onApplyRefinement?: (addition: string) => void;
 }
 
 export default function QueryPreview({
   query,
   searchEngine,
+  activeSource,
   user,
   saving,
   showSaveInput,
@@ -25,6 +29,7 @@ export default function QueryPreview({
   onSaveSearchNameChange,
   onToggleSaveInput,
   onSave,
+  onApplyRefinement,
 }: QueryPreviewProps) {
   const handleOpenInSearch = () => {
     if (query.url) {
@@ -54,8 +59,8 @@ export default function QueryPreview({
   }
 
   return (
-    <div className="card text-center">
-      <div className="flex flex-col items-center gap-3">
+    <div className="card">
+      <div className="flex flex-col items-center gap-3 text-center">
         <button onClick={handleOpenInSearch} className="btn-primary text-base">
           Open in {getSearchEngineName()}
         </button>
@@ -88,6 +93,14 @@ export default function QueryPreview({
           </>
         )}
       </div>
+
+      {onApplyRefinement && (
+        <SearchRefinements
+          query={query.raw}
+          platform={activeSource}
+          onApply={onApplyRefinement}
+        />
+      )}
     </div>
   );
 }

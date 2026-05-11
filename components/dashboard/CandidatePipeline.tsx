@@ -1,10 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Candidate, PipelineStage } from "@/lib/dashboard-types";
+import { createClient } from "@/lib/supabase-browser";
+import { useToast } from "@/components/Toast";
 import EditCandidateModal from "./EditCandidateModal";
 import CommunicationHistory from "./CommunicationHistory";
 import EmailComposer from "./EmailComposer";
+
+function ScoreBadge({ score }: { score: number }) {
+  const color =
+    score >= 8
+      ? "bg-emerald-100 text-emerald-800"
+      : score >= 5
+        ? "bg-amber-100 text-amber-800"
+        : "bg-red-100 text-red-800";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
+      {score}/10
+    </span>
+  );
+}
 
 interface CandidatePipelineProps {
   candidates: Candidate[];
@@ -24,6 +40,8 @@ export default function CandidatePipeline({
   stages,
   onRefresh,
 }: CandidatePipelineProps) {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [stageFilter, setStageFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
@@ -35,6 +53,7 @@ export default function CandidatePipeline({
     null
   );
   const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
+  const [scoring, setScoring] = useState(false);
 
   const filteredCandidates = candidates.filter((c) => {
     if (stageFilter !== "all" && c.current_stage_id !== stageFilter)
@@ -58,6 +77,59 @@ export default function CandidatePipeline({
     setSelectedCandidate(candidate);
     setIsEmailComposerOpen(true);
     setIsModalOpen(false);
+  };
+
+  const handleScoreCandidate = async (candidate: Candidate) => {
+    if (!candidate.notes && !candidate.name) {
+      toast("Add notes to the candidate before scoring", "warning");
+      return;
+    }
+
+    setScoring(true);
+    try {
+      const res = await fetch("/api/ai/score-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateName: candidate.name,
+          notes: candidate.notes ?? "",
+          source: candidate.source ?? "",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        throw new Error(err.error ?? "Scoring failed");
+      }
+
+      const data = await res.json() as { score: number; reasoning: string };
+
+      const { error } = await supabase
+        .from("candidates")
+        .update({
+          score: data.score,
+          score_reasoning: data.reasoning,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", candidate.id)
+        .eq("user_id", candidate.user_id);
+
+      if (error) throw error;
+
+      toast(`Scored ${candidate.name}: ${data.score}/10`, "success");
+      onRefresh();
+
+      setSelectedCandidate((prev) =>
+        prev?.id === candidate.id
+          ? { ...prev, score: data.score, score_reasoning: data.reasoning }
+          : prev
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Scoring failed";
+      toast(message, "error");
+    } finally {
+      setScoring(false);
+    }
   };
 
   return (
@@ -117,12 +189,15 @@ export default function CandidatePipeline({
                 <p className="mt-0.5 text-sm text-gray-500">
                   {candidate.email}
                 </p>
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <span
                     className={`badge ${STATUS_STYLES[candidate.status || "active"]}`}
                   >
                     {currentStage?.name || "Unknown Stage"}
                   </span>
+                  {candidate.score != null && (
+                    <ScoreBadge score={candidate.score} />
+                  )}
                 </div>
                 <p className="mt-3 text-xs text-gray-400">
                   Click to view details
@@ -226,6 +301,36 @@ export default function CandidatePipeline({
                 <div className="min-h-[60px] rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                   {selectedCandidate.notes || "No notes available"}
                 </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    AI Score
+                  </h4>
+                  <button
+                    onClick={() => handleScoreCandidate(selectedCandidate)}
+                    disabled={scoring}
+                    className="rounded bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
+                  >
+                    {scoring ? "Scoring..." : selectedCandidate.score != null ? "Re-score with AI" : "Score with AI"}
+                  </button>
+                </div>
+                {selectedCandidate.score != null ? (
+                  <div className="rounded border border-gray-200 bg-gray-50 p-3">
+                    <div className="mb-1 flex items-center gap-2">
+                      <ScoreBadge score={selectedCandidate.score} />
+                      <span className="text-xs text-gray-500">out of 10</span>
+                    </div>
+                    {selectedCandidate.score_reasoning && (
+                      <p className="text-sm text-gray-700">{selectedCandidate.score_reasoning}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    No score yet. Add notes to the candidate and click &ldquo;Score with AI&rdquo;.
+                  </p>
+                )}
               </div>
 
               <div className="md:col-span-2">

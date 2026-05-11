@@ -40,6 +40,8 @@ export interface Candidate {
   current_stage_id?: string;
   status?: CandidateStatus;
   notes?: string;
+  score?: number;
+  score_reasoning?: string;
   created_at: string;
   updated_at: string;
 }

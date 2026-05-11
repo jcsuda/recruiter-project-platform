@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { SavedSearch, SearchParams, SourceKey } from "@/lib/types";
 import { useToast } from "./Toast";
 import ConfirmDialog from "./ConfirmDialog";
+import SavedSearchInsights from "./SavedSearchInsights";
 
 interface SavedSearchesProps {
   onLoad?: (
@@ -131,38 +132,42 @@ export default function SavedSearches({ onLoad }: SavedSearchesProps) {
             Search&quot; to save your first search.
           </p>
         ) : (
-          <div className="space-y-2">
-            {searches.map((search) => (
-              <div
-                key={search.id}
-                className="flex items-center justify-between rounded-md bg-gray-50 px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {search.title}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {search.source_key} &bull;{" "}
-                    {new Date(search.created_at).toLocaleDateString()}
-                  </p>
+          <>
+            <div className="space-y-2">
+              {searches.map((search) => (
+                <div
+                  key={search.id}
+                  className="flex items-center justify-between rounded-md bg-gray-50 px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {search.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {search.source_key} &bull;{" "}
+                      {new Date(search.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="ml-4 flex gap-2">
+                    <button
+                      onClick={() => handleLoad(search)}
+                      className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(search.id)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="ml-4 flex gap-2">
-                  <button
-                    onClick={() => handleLoad(search)}
-                    className="text-sm font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    Load
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(search.id)}
-                    className="text-sm font-medium text-red-600 hover:text-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            <SavedSearchInsights searches={searches} />
+          </>
         )}
       </div>
 

@@ -96,3 +96,60 @@ create trigger set_updated_at
   for each row
   execute function public.handle_updated_at();
 
+-- ============================================================
+-- Migration: AI candidate scoring (run after initial schema)
+-- ============================================================
+
+-- Add AI score columns to candidates table
+-- Run this if the candidates table already exists:
+--
+-- alter table public.candidates
+--   add column if not exists score integer check (score >= 1 and score <= 10),
+--   add column if not exists score_reasoning text;
+--
+-- If creating the candidates table fresh, include these columns in the CREATE TABLE statement.
+
+-- Candidates table (if not already created)
+create table if not exists public.candidates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  requisition_id uuid,
+  name text not null,
+  email text,
+  phone text,
+  source text,
+  current_stage_id uuid,
+  status text not null default 'active',
+  notes text,
+  score integer check (score >= 1 and score <= 10),
+  score_reasoning text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_candidates_user_id on public.candidates(user_id);
+create index if not exists idx_candidates_requisition_id on public.candidates(requisition_id);
+
+alter table public.candidates enable row level security;
+
+create policy "Users can view their own candidates"
+  on public.candidates for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own candidates"
+  on public.candidates for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own candidates"
+  on public.candidates for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own candidates"
+  on public.candidates for delete
+  using (auth.uid() = user_id);
+
+create trigger set_candidates_updated_at
+  before update on public.candidates
+  for each row
+  execute function public.handle_updated_at();
+

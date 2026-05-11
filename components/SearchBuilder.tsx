@@ -14,10 +14,11 @@ import { createClient } from "@/lib/supabase-browser";
 import type { User } from "@supabase/supabase-js";
 import QueryPreview from "./QueryPreview";
 import SavedSearches from "./SavedSearches";
+import NaturalLanguageSearch from "./NaturalLanguageSearch";
 import { useToast } from "./Toast";
 
 export default function SearchBuilder() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
 
   const [activeSource, setActiveSource] = useState<SourceKey>("linkedin");
@@ -108,6 +109,10 @@ export default function SearchBuilder() {
     setParams((prev) => ({ ...prev, exclude: parseArrayInput(value) }));
   };
 
+  const handleApplyRefinement = (addition: string) => {
+    setParams((prev) => ({ ...prev, role: `${prev.role ?? ""} ${addition}`.trim() }));
+  };
+
   const handleLoadSearch = (
     sourceKey: SourceKey,
     searchParams: SearchParams,
@@ -143,6 +148,12 @@ export default function SearchBuilder() {
           ))}
         </div>
       </div>
+
+      {/* AI Search Generator */}
+      <NaturalLanguageSearch
+        activeSource={activeSource}
+        searchEngine={searchEngine}
+      />
 
       {/* Form */}
       <div className="card mb-6">
@@ -323,6 +334,7 @@ export default function SearchBuilder() {
       <QueryPreview
         query={query}
         searchEngine={searchEngine}
+        activeSource={activeSource}
         user={user}
         saving={saving}
         showSaveInput={showSaveInput}
@@ -330,6 +342,7 @@ export default function SearchBuilder() {
         onSaveSearchNameChange={setSaveSearchName}
         onToggleSaveInput={() => setShowSaveInput(!showSaveInput)}
         onSave={handleSaveSearch}
+        onApplyRefinement={handleApplyRefinement}
       />
 
       {/* Saved Searches */}
